@@ -6,34 +6,56 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .setting-row { display: flex; align-items: center; gap: 15px; background: #e3f2fd; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
-        button { cursor: pointer; padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; }
+        .flex { display: flex; gap: 15px; }
+        .column { flex: 1; }
+        button { cursor: pointer; padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; transition: 0.3s; }
         .btn-green { background: #27ae60; color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
-        .match-card { background: #2c3e50; color: white; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        input { padding: 10px; border: 2px solid #ddd; border-radius: 8px; outline: none; }
+        .list-item { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .alert { padding: 10px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>🏟️ Turnuva Yönetimi</h1>
+    <h1>🏟️ Turnuva Yönetim Merkezi</h1>
 
-    <div class="card">
-        <h3>⚙️ Harf İpucu Ayarları</h3>
-        <div class="setting-row">
-            <label>Harf açılma aralığı (saniye): </label>
-            <input type="number" id="harfSuresi" value="10" style="width: 60px; padding: 8px;">
-            <small>Örn: 10 yazarsanız her 10 saniyede bir rastgele harf açılır.</small>
+    <div class="flex">
+        <div class="column">
+            <div class="card">
+                <h3>👥 Oyuncu Onay Bekleme</h3>
+                <div id="oyuncuListesi">Bekleniyor...</div>
+            </div>
+        </div>
+
+        <div class="column">
+            <div class="card">
+                <h3>📚 Kelime Havuzu</h3>
+                <div id="kelimeUyari" class="alert" style="background:#fff3cd">Hesaplanıyor...</div>
+                <div class="flex">
+                    <input id="k" placeholder="Kelime" style="flex:1">
+                    <input id="a" placeholder="İpucu" style="flex:1">
+                    <button class="btn-green" onclick="ekle()">EKLE</button>
+                </div>
+                <div id="kelimeHavuzu" style="margin-top:15px; max-height:200px; overflow-y:auto; border-top:1px solid #ddd"></div>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <button class="btn-green" onclick="eslestir()">🤝 EŞLEŞTİR VE BAŞLAT</button>
+        <h3>⚙️ Turnuva & Harf Ayarları</h3>
+        <label>Harf açılma hızı (Saniye): </label>
+        <input type="number" id="harfSuresi" value="10" style="width:60px">
+        <button class="btn-blue" onclick="eslestir()">⚔️ TURNUVAYI BAŞLAT</button>
         <button class="btn-red" onclick="sifirla()">SİSTEMİ SIFIRLA</button>
     </div>
 
-    <div id="canli-maclar"></div>
+    <div class="card">
+        <h3>📊 Canlı Maç Tablosu</h3>
+        <div id="macListesi"></div>
+    </div>
 
     <script>
         var firebaseConfig = {
@@ -49,29 +71,101 @@
         var db = firebase.database();
         var harfInterval;
 
-        // Harf Açma Motoru
+        // KELİME EKLEME VE LİSTELEME
+        function ekle() {
+            var k = document.getElementById("k").value.toUpperCase().trim();
+            var a = document.getElementById("a").value.trim();
+            if(k && a) {
+                db.ref("turnuva/havuz").push({k, a});
+                document.getElementById("k").value = "";
+                document.getElementById("a").value = "";
+            }
+        }
+
+        db.ref("turnuva/havuz").on("value", s => {
+            var html = "";
+            var sayi = s.numChildren();
+            s.forEach(h => {
+                html += `<div class="list-item"><b>${h.val().k}</b> <span>${h.val().a}</span> <button class="btn-red" style="padding:2px 5px" onclick="db.ref('turnuva/havuz/${h.key}').remove()">X</button></div>`;
+            });
+            document.getElementById("kelimeHavuzu").innerHTML = html || "Havuz boş.";
+            window.havuzSayisi = sayi;
+            ihtiyacHesapla();
+        });
+
+        // OYUNCU ONAYI
+        db.ref("turnuva/oyuncular").on("value", s => {
+            var html = "";
+            window.onayliSayisi = 0;
+            s.forEach(o => {
+                var d = o.val();
+                if(d.durum === "bekliyor") window.onayliSayisi++;
+                html += `<div class="list-item">${d.ad} [${d.durum}] ${d.durum === 'onay_bekliyor' ? `<button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button>` : ''}</div>`;
+            });
+            document.getElementById("oyuncuListesi").innerHTML = html || "Kimse yok.";
+            ihtiyacHesapla();
+        });
+
+        function ihtiyacHesapla() {
+            var gereken = Math.floor(window.onayliSayisi / 2) * 3;
+            var uyari = document.getElementById("kelimeUyari");
+            if(window.havuzSayisi < gereken) {
+                uyari.innerHTML = `⚠️ Yetersiz Kelime! Gereken: ${gereken}, Mevcut: ${window.havuzSayisi}`;
+                uyari.style.background = "#fff3cd";
+            } else {
+                uyari.innerHTML = `✅ Hazır! ${window.havuzSayisi} kelime yeterli.`;
+                uyari.style.background = "#d4edda";
+            }
+        }
+
+        // TURNUVA VE HARF MOTORU
+        function eslestir() {
+            db.ref("turnuva").once("value", ts => {
+                var havuz = [];
+                ts.child("havuz").forEach(h => { havuz.push(h.val()); });
+                havuz = havuz.sort(() => 0.5 - Math.random());
+
+                var bekleyenler = [];
+                ts.child("oyuncular").forEach(o => { if(o.val().durum === "bekliyor") bekleyenler.push({id:o.key, ad:o.val().ad}); });
+
+                if(bekleyenler.length < 2) return alert("Oyuncu yetersiz!");
+                
+                var kIndex = 0;
+                for(let i=0; i<bekleyenler.length; i+=2) {
+                    if(bekleyenler[i+1]) {
+                        var p1 = bekleyenler[i], p2 = bekleyenler[i+1];
+                        var macKelimeleri = havuz.slice(kIndex, kIndex+3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
+                        kIndex += 3;
+
+                        db.ref("turnuva/maclar").push().set({
+                            p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad,
+                            kelimeler:macKelimeleri, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:""
+                        });
+                        db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
+                        db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
+                    }
+                }
+                harfMotorunuBaslat();
+            });
+        }
+
         function harfMotorunuBaslat() {
             if(harfInterval) clearInterval(harfInterval);
             var sn = document.getElementById("harfSuresi").value || 10;
-            
             harfInterval = setInterval(() => {
                 db.ref("turnuva/maclar").once("value", s => {
-                    s.forEach(macSnap => {
-                        var mac = macSnap.val();
-                        if(mac.durum === "aktif") {
-                            var r = mac.aktifRaunt;
-                            var orjinal = mac.kelimeler[r].k;
-                            var gizli = mac.kelimeler[r].gizli;
-                            
-                            // Rastgele bir '-' bul ve harfi aç
-                            var kapaliIndisler = [];
-                            for(let i=0; i<gizli.length; i++) if(gizli[i] === "-") kapaliIndisler.push(i);
-                            
-                            if(kapaliIndisler.length > 1) { // Son harf kalana kadar aç
-                                var secilen = kapaliIndisler[Math.floor(Math.random() * kapaliIndisler.length)];
-                                var yeniGizli = gizli.split("");
-                                yeniGizli[secilen] = orjinal[secilen];
-                                db.ref(`turnuva/maclar/${macSnap.key}/kelimeler/${r}/gizli`).set(yeniGizli.join(""));
+                    s.forEach(ms => {
+                        var m = ms.val();
+                        if(m.durum === "aktif") {
+                            var r = m.aktifRaunt;
+                            var g = m.kelimeler[r].gizli;
+                            var k = m.kelimeler[r].k;
+                            var tireler = [];
+                            for(let i=0; i<g.length; i++) if(g[i]==="-") tireler.push(i);
+                            if(tireler.length > 1) {
+                                var sec = tireler[Math.floor(Math.random()*tireler.length)];
+                                var yeni = g.split(""); yeni[sec] = k[sec];
+                                db.ref(`turnuva/maclar/${ms.key}/kelimeler/${r}/gizli`).set(yeni.join(""));
                             }
                         }
                     });
@@ -79,24 +173,16 @@
             }, sn * 1000);
         }
 
-        function eslestir() {
-            // ... (Önceki eşleştirme kodun buraya gelecek) ...
-            // Eşleştirme sonunda:
-            harfMotorunuBaslat();
-            alert("Turnuva ve Harf Motoru Başladı!");
-        }
-
-        // Maç Takibi Görseli
         db.ref("turnuva/maclar").on("value", s => {
-            var h = "";
+            var html = "";
             s.forEach(m => {
                 var v = m.val();
-                h += `<div class="match-card">${v.p1_ad} vs ${v.p2_ad} | Kelime: ${v.kelimeler[v.aktifRaunt].gizli}</div>`;
+                html += `<div class="list-item"><b>${v.p1_ad} vs ${v.p2_ad}</b> Raunt: ${v.aktifRaunt+1} [${v.kelimeler[v.aktifRaunt].gizli}]</div>`;
             });
-            document.getElementById("canli-maclar").innerHTML = h;
+            document.getElementById("macListesi").innerHTML = html;
         });
 
-        function sifirla() { db.ref("turnuva").remove(); clearInterval(harfInterval); location.reload(); }
+        function sifirla() { db.ref("turnuva").remove(); location.reload(); }
     </script>
 </body>
 </html>
