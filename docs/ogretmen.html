@@ -8,13 +8,8 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <style>
-body{
-  font-family:Arial;
-}
-
-button{
-  margin:3px;
-}
+body{font-family:Arial;}
+button{margin:3px;}
 </style>
 </head>
 
@@ -22,29 +17,24 @@ button{
 
 <h2>👩‍🏫 Öğretmen Paneli</h2>
 
-<!-- ÖĞRENCİLER -->
-
-<h3>👨‍🎓 Öğrenci Listesi</h3>
+<h3>👨‍🎓 Öğrenciler</h3>
 <div id="ogrenciler"></div>
 
-<hr>
+<button onclick="oyunAc()">🎮 Oyunu Başlat</button>
+<button onclick="oyunKapat()">⛔ Oyunu Kapat</button>
 
-<!-- KELİME EKLE -->
+<hr>
 
 <h3>➕ Kelime Ekle</h3>
 
 <input id="kelime" placeholder="Kelime">
 <input id="anlam" placeholder="Anlam">
-
 <button onclick="ekle()">Ekle</button>
 
 <hr>
 
-<!-- HAVUZ -->
-
 <h3>📚 Kelime Havuzu</h3>
 <div id="kelimeler"></div>
-
 
 <script>
 
@@ -62,9 +52,11 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 
-/* =======================
-   ÖĞRENCİLER + SIRALAMA
-======================= */
+/* OYUN BAŞTA KAPALI */
+db.ref("oyunDurum").set("kapali");
+
+
+/* ÖĞRENCİLER */
 
 db.ref("ogrenciler").on("value",function(s){
 
@@ -72,53 +64,51 @@ db.ref("ogrenciler").on("value",function(s){
 
   s.forEach(function(e){
 
-    var d=e.val();
-    liste.push(d);
+    liste.push({id:e.key,...e.val()});
   });
 
-  // PUANA GÖRE SIRALA
-  liste.sort(function(a,b){
-    return (b.puan||0)-(a.puan||0);
-  });
+  liste.sort((a,b)=>(b.puan||0)-(a.puan||0));
 
   var html="";
 
-  for(var i=0;i<liste.length;i++){
-
-    var o=liste[i];
+  liste.forEach(function(o,i){
 
     html+=`
     ${i+1}. ${o.ad}
-    | Puan: ${o.puan||0}
+    | ${o.puan||0} puan
     | ${o.onay?"✔️":"⏳"}
 
-    <button onclick="onayla('${o.ad}')">Onayla</button>
+    <button onclick="onayla('${o.id}')">Onayla</button>
     <br>
     `;
-  }
+  });
 
   document.getElementById("ogrenciler").innerHTML=html;
 });
 
 
-function onayla(ad){
+function onayla(id){
 
-  db.ref("ogrenciler").once("value",function(s){
-
-    s.forEach(function(e){
-
-      if(e.val().ad==ad){
-
-        db.ref("ogrenciler/"+e.key+"/onay").set(true);
-      }
-    });
-  });
+  db.ref("ogrenciler/"+id+"/onay").set(true);
 }
 
 
-/* =======================
-   KELİME EKLE
-======================= */
+/* OYUN AÇ / KAPAT */
+
+function oyunAc(){
+
+  db.ref("oyunDurum").set("acik");
+  alert("Oyun açıldı!");
+}
+
+function oyunKapat(){
+
+  db.ref("oyunDurum").set("kapali");
+  alert("Oyun kapandı!");
+}
+
+
+/* KELİME EKLE */
 
 function ekle(){
 
@@ -137,9 +127,7 @@ function ekle(){
 }
 
 
-/* =======================
-   HAVUZ
-======================= */
+/* HAVUZ */
 
 db.ref("kelimeler").on("value",function(s){
 
@@ -152,8 +140,7 @@ db.ref("kelimeler").on("value",function(s){
     html+=`
     <b>${d.kelime}</b> - ${d.anlam}
 
-    <button onclick="baslat('${e.key}')">▶ Başlat</button>
-
+    <button onclick="baslat('${e.key}')">▶</button>
     <button onclick="sil('${e.key}')">❌</button>
 
     <br><br>
@@ -166,23 +153,17 @@ db.ref("kelimeler").on("value",function(s){
 
 function sil(id){
 
-  if(confirm("Silinsin mi?")){
-    db.ref("kelimeler/"+id).remove();
-  }
+  db.ref("kelimeler/"+id).remove();
 }
 
 
-/* =======================
-   OYUN BAŞLAT
-======================= */
+/* KELİME BAŞLAT */
 
 function baslat(id){
 
   db.ref("kelimeler/"+id).once("value",function(s){
 
     var d=s.val();
-
-    if(!d) return;
 
     var gizli="";
 
@@ -196,7 +177,7 @@ function baslat(id){
       anlam:d.anlam
     });
 
-    alert("🎮 Oyun Başladı!");
+    alert("Kelime gönderildi!");
   });
 }
 
