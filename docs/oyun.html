@@ -6,27 +6,27 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; padding-top: 30px; }
-        .arena { background: #16213e; padding: 30px; display: inline-block; border-radius: 20px; width: 90%; max-width: 600px; border: 2px solid #e94560; box-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
-        .skor-board { font-size: 28px; font-weight: bold; background: #1a1a2e; padding: 15px; border-radius: 10px; margin-bottom: 20px; color: #f1c40f; border: 1px solid #333; }
-        #kelime { font-size: 45px; letter-spacing: 10px; font-family: 'Courier New', monospace; margin: 20px 0; background: #1a1a2e; padding: 20px; border-radius: 10px; color: #00d2ff; }
-        input { padding: 15px; font-size: 20px; width: 80%; border-radius: 10px; border: none; margin-bottom: 10px; text-align: center; outline: none; background: #eef2f3; color: #333; }
-        button { padding: 15px 40px; font-size: 20px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #ff4d6d; transform: scale(1.05); }
-        button:disabled { background: #555; cursor: not-allowed; }
-        #mesaj { font-size: 18px; margin-top: 15px; color: #a2a8d3; min-height: 25px; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; padding-top: 20px; }
+        .arena { background: #16213e; padding: 25px; display: inline-block; border-radius: 20px; width: 90%; max-width: 600px; border: 3px solid #e94560; }
+        .vs-header { font-size: 22px; margin-bottom: 15px; color: #00d2ff; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; }
+        .skor-board { font-size: 26px; font-weight: bold; margin-bottom: 15px; color: #f1c40f; }
+        #kelime { font-size: 45px; letter-spacing: 12px; font-family: 'Courier New', monospace; margin: 20px 0; background: #1a1a2e; padding: 20px; border-radius: 10px; color: #ffffff; text-shadow: 0 0 10px #e94560; }
+        input { padding: 15px; font-size: 20px; width: 80%; border-radius: 10px; border: none; margin-bottom: 10px; text-align: center; outline: none; }
+        button { padding: 15px 40px; font-size: 20px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        #ipucu-sistemi { color: #2ecc71; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="arena">
-        <div id="raunt-no" style="color:#e94560; font-weight:bold; margin-bottom:5px;">Raunt: 1 / 3</div>
-        <div class="skor-board" id="skor">SİZ 0 - 0 RAKİP</div>
-        <p>İpucu: <span id="ipucu" style="color:#f1c40f">...</span></p>
+        <div class="vs-header" id="eslesme-isim">YÜKLENİYOR...</div>
+        <div id="raunt-no" style="color:#e94560; font-weight:bold;">Raunt: 1 / 3</div>
+        <div class="skor-board" id="skor">0 - 0</div>
+        <div id="ipucu-sistemi">💡 Harf bekleniyor...</div>
+        <p>İpucu: <span id="ipucu-metin" style="color:#f1c40f">...</span></p>
         <div id="kelime">-----</div>
-        <input id="tahmin" placeholder="Cevabınızı buraya yazın..." autofocus onkeypress="if(event.key === 'Enter') gonder()">
+        <input id="tahmin" placeholder="Cevabı yaz ve Enter'a bas" autofocus onkeypress="if(event.key === 'Enter') gonder()">
         <br>
-        <button id="btn" onclick="gonder()">CEVABI GÖNDER</button>
-        <p id="mesaj">Hızlı ve doğru olan puanı kapar!</p>
+        <button id="btn" onclick="gonder()">GÖNDER</button>
     </div>
 
     <script>
@@ -43,7 +43,6 @@
         var db = firebase.database();
         var id = localStorage.getItem("turnuva_id");
         var macID = "";
-        var dogruCevap = "";
 
         db.ref("turnuva/maclar").on("value", s => {
             s.forEach(m => {
@@ -51,18 +50,15 @@
                 if((v.p1 === id || v.p2 === id) && v.durum === "aktif") {
                     macID = m.key;
                     var r = v.aktifRaunt;
-                    if(!v.kelimeler[r]) return;
-
-                    dogruCevap = v.kelimeler[r].k;
-                    document.getElementById("kelime").innerText = v.kelimeler[r].gizli;
-                    document.getElementById("ipucu").innerText = v.kelimeler[r].i;
-                    document.getElementById("raunt-no").innerText = "Raunt: " + (r + 1) + " / 3";
                     
-                    var s1 = v.p1_skor || 0;
-                    var s2 = v.p2_skor || 0;
-                    document.getElementById("skor").innerText = (v.p1 === id) ? `SİZ ${s1} - ${s2} RAKİP` : `SİZ ${s2} - ${s1} RAKİP`;
-                    document.getElementById("btn").disabled = false;
-                    document.getElementById("mesaj").innerText = "Cevap bekleniyor...";
+                    // Rakip İsmi Gösterimi
+                    var rakipAd = (v.p1 === id) ? v.p2_ad : v.p1_ad;
+                    document.getElementById("eslesme-isim").innerText = `⚔️ RAKİBİN: ${rakipAd}`;
+                    
+                    document.getElementById("kelime").innerText = v.kelimeler[r].gizli;
+                    document.getElementById("ipucu-metin").innerText = v.kelimeler[r].i;
+                    document.getElementById("raunt-no").innerText = "Raunt: " + (r + 1) + " / 3";
+                    document.getElementById("skor").innerText = (v.p1 === id) ? `${v.p1_skor} - ${v.p2_skor}` : `${v.p2_skor} - ${v.p1_skor}`;
                 }
             });
         });
@@ -70,35 +66,32 @@
         function gonder() {
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             if(t === "") return;
-            
-            document.getElementById("btn").disabled = true;
-            document.getElementById("tahmin").value = "";
+            db.ref("turnuva/maclar/" + macID).once("value", s => {
+                var v = s.val();
+                var r = v.aktifRaunt;
+                var dogru = v.kelimeler[r].k;
 
-            db.ref("turnuva/maclar/" + macID).transaction(mac => {
-                if(mac && mac.durum === "aktif") {
-                    var r = mac.aktifRaunt;
-                    // Eğer cevap doğruysa puanı yaz
-                    if(t === mac.kelimeler[r].k) {
-                        if(mac.p1 === id) mac.p1_skor = (mac.p1_skor || 0) + 1;
-                        else mac.p2_skor = (mac.p2_skor || 0) + 1;
+                db.ref("turnuva/maclar/" + macID).transaction(mac => {
+                    if(mac) {
+                        if(t === dogru) {
+                            if(mac.p1 === id) mac.p1_skor++; else mac.p2_skor++;
+                        }
+                        if(mac.aktifRaunt < 2 && mac.p1_skor < 2 && mac.p2_skor < 2) {
+                            mac.aktifRaunt++;
+                        } else {
+                            mac.durum = "bitti";
+                            mac.winner = (mac.p1_skor >= mac.p2_skor) ? mac.p1 : mac.p2;
+                        }
                     }
-
-                    // Yanlış da olsa doğru da olsa bir sonraki kelimeye geç
-                    if(mac.aktifRaunt < 2 && mac.p1_skor < 2 && mac.p2_skor < 2) {
-                        mac.aktifRaunt++;
-                    } else {
-                        mac.durum = "bitti";
-                        mac.winner = (mac.p1_skor >= mac.p2_skor) ? mac.p1 : mac.p2;
-                    }
-                }
-                return mac;
+                    return mac;
+                });
+                document.getElementById("tahmin").value = "";
             });
         }
 
         db.ref("turnuva/maclar").on("child_changed", s => {
             if(s.key === macID && s.val().durum === "bitti") {
-                var w = s.val().winner;
-                alert(w === id ? "🏆 TEBRİKLER! Bir üst tura yükseldin!" : "❌ Elendin! Bir sonraki turnuvada başarılar.");
+                alert(s.val().winner === id ? "🏆 KAZANDIN!" : "❌ KAYBETTİN!");
                 window.location.href = "index.html";
             }
         });
