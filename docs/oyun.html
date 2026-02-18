@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Kelime Avı - Oyun</title>
+<title>Kelime Avı</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -17,6 +17,11 @@ body{
   font-size:40px;
   letter-spacing:8px;
 }
+
+input{
+  font-size:18px;
+  padding:5px;
+}
 </style>
 </head>
 
@@ -28,6 +33,13 @@ body{
 <p id="anlam">Bekleniyor...</p>
 
 <h2 id="kelime">-----</h2>
+
+<br>
+
+<input id="tahmin" placeholder="Tahminini yaz">
+<button onclick="gonder()">Gönder</button>
+
+<p id="mesaj"></p>
 
 <script>
 
@@ -44,19 +56,50 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
+var kelime = "";
+var ogrenciID = localStorage.getItem("id");
 
-/* AKTİF KELİMEYİ DİNLE */
+
+/* AKTİF KELİME */
 db.ref("aktif").on("value",function(s){
 
   var d = s.val();
 
   if(!d) return;
 
-  // SADECE GİZLİ HALİ GÖSTER
+  kelime = d.kelime;
+
   document.getElementById("anlam").innerText = d.anlam;
   document.getElementById("kelime").innerText = d.gizli;
 
+  document.getElementById("mesaj").innerText="";
+  document.getElementById("tahmin").value="";
 });
+
+
+/* TAHMİN */
+function gonder(){
+
+  var t = document.getElementById("tahmin").value.toUpperCase();
+
+  if(t=="") return;
+
+  if(t == kelime){
+
+    db.ref("ogrenciler/"+ogrenciID+"/puan")
+    .transaction(function(p){
+      return (p||0)+10;
+    });
+
+    document.getElementById("mesaj").innerText="✅ Doğru! +10 puan";
+
+  }else{
+
+    document.getElementById("mesaj").innerText="❌ Yanlış";
+  }
+
+  document.getElementById("tahmin").value="";
+}
 
 </script>
 
