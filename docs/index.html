@@ -34,40 +34,70 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-var ogrenciID = localStorage.getItem("id");
+var id = localStorage.getItem("id");
 
-if(!ogrenciID){
-  ogrenciID = db.ref("ogrenciler").push().key;
-  localStorage.setItem("id",ogrenciID);
+if(!id){
+  id = db.ref("ogrenciler").push().key;
+  localStorage.setItem("id",id);
 }
+
 
 /* GİRİŞ */
 function giris(){
 
-  var ad = document.getElementById("ad").value;
+  var ad=document.getElementById("ad").value.trim();
 
   if(ad==""){
-    alert("Ad yaz");
+    alert("Ad yazmadan olmaz!");
     return;
   }
 
-  db.ref("ogrenciler/"+ogrenciID).set({
+  db.ref("ogrenciler/"+id).set({
     ad:ad,
     onay:false,
     puan:0
   });
 
-  document.getElementById("durum").innerText="Onay bekleniyor...";
+  document.getElementById("durum").innerText="⏳ Onay bekleniyor...";
 }
 
 
-/* ONAY DİNLE */
-db.ref("ogrenciler/"+ogrenciID+"/onay")
-.on("value",function(s){
+/* ONAY + OYUN KİLİDİ */
+
+db.ref("ogrenciler/"+id+"/onay").on("value",function(s){
 
   if(s.val()==true){
 
-    window.location="oyun.html";
+    // oyun açık mı?
+    db.ref("oyunDurum").once("value",function(d){
+
+      if(d.val()=="acik"){
+
+        window.location="oyun.html";
+
+      }else{
+
+        document.getElementById("durum").innerText=
+        "✔️ Onaylandı, oyun bekleniyor...";
+      }
+    });
+  }
+});
+
+
+/* OYUN AÇILINCA GİR */
+
+db.ref("oyunDurum").on("value",function(s){
+
+  if(s.val()=="acik"){
+
+    db.ref("ogrenciler/"+id+"/onay").once("value",function(d){
+
+      if(d.val()==true){
+
+        window.location="oyun.html";
+      }
+    });
   }
 });
 
