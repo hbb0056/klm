@@ -12,7 +12,6 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #f4f4f4; }
-        .puan-hucre { font-size: 1.2em; color: #2c3e50; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -20,9 +19,8 @@
 
     <div class="box">
         <h3>🎮 Oyun Kontrolü</h3>
-        <button style="background:#2ecc71; color:white;" onclick="oyunAc()">OYUNU AÇ (Girişleri Başlat)</button>
-        <button style="background:#e74c3c; color:white;" onclick="oyunKapat()">OYUNU KAPAT</button>
-        <button style="background:#f1c40f;" onclick="puanlariSifirla()">🧹 Puanları Sıfırla</button>
+        <button style="background:#2ecc71; color:white;" onclick="oyunAc()">OYUNU AÇ</button>
+        <button style="background:#e74c3c; color:white;" onclick="oyunKapat()">OYUNU KAPAT VE SİSTEMİ SIFIRLA</button>
     </div>
 
     <div class="box">
@@ -31,9 +29,8 @@
     </div>
 
     <div class="box">
-        <h3>📚 Kelime Havuzu ve Başlatma</h3>
-        <input id="k" placeholder="Kelime" style="padding:8px;"> 
-        <input id="a" placeholder="Anlam/İpucu" style="padding:8px; width:300px;">
+        <h3>📚 Kelime Havuzu</h3>
+        <input id="k" placeholder="Kelime"> <input id="a" placeholder="Anlam" style="width:300px;">
         <button onclick="kelimeEkle()">Havuza Ekle</button>
         <hr>
         <div id="havuz"></div>
@@ -53,55 +50,52 @@
         var db = firebase.database();
         var harfInterval;
 
-        // CANLI SKOR VE ONAY TAKİBİ
+        // Skor Tablosu Dinleyici
         db.ref("ogrenciler").on("value", function(s){
             var liste = [];
             s.forEach(e => { liste.push({id:e.key, ...e.val()}) });
             liste.sort((a,b) => (b.puan||0) - (a.puan||0));
 
-            var html = "<table><tr><th>Sıra</th><th>Öğrenci</th><th>Puan</th><th>Durum / İşlem</th></tr>";
+            var html = "<table><tr><th>Sıra</th><th>Öğrenci</th><th>Puan</th><th>İşlem</th></tr>";
             liste.forEach((o, i) => {
                 html += `<tr>
                     <td>${i+1}</td>
                     <td>${o.ad}</td>
-                    <td class="puan-hucre">${o.puan||0}</td>
-                    <td>${o.onay ? '<span style="color:green">✅ Onaylı</span>' : `<button onclick="onayla('${o.id}')">Onayla</button>`}</td>
+                    <td><b>${o.puan||0}</b></td>
+                    <td>${o.onay ? '✅' : `<button onclick="onayla('${o.id}')">Onayla</button>`}</td>
                 </tr>`;
             });
-            document.getElementById("ogrenciListesi").innerHTML = html + "</table>";
+            document.getElementById("ogrenciListesi").innerHTML = (liste.length > 0) ? html + "</table>" : "Bekleyen öğrenci yok.";
         });
 
         function onayla(id){ db.ref("ogrenciler/"+id+"/onay").set(true); }
-        function oyunAc(){ db.ref("oyunDurum").set("acik"); alert("Oyun açıldı! Onaylı öğrenciler oyuna girebilir."); }
-        function oyunKapat(){ db.ref("oyunDurum").set("kapali"); alert("Oyun kapandı."); }
         
-        function puanlariSifirla(){
-            if(confirm("Tüm öğrencilerin puanları sıfırlanacak. Emin misiniz?")){
-                db.ref("ogrenciler").once("value", s => {
-                    s.forEach(e => { db.ref("ogrenciler/"+e.key+"/puan").set(0); });
-                });
+        function oyunAc(){ 
+            db.ref("oyunDurum").set("acik"); 
+        }
+
+        // TAM SIFIRLAMA YAPAN FONKSİYON
+        function oyunKapat(){
+            if(confirm("Oyun kapatılacak ve TÜM ÖĞRENCİ LİSTESİ SİLİNECEK. Emin misiniz?")){
+                if(harfInterval) clearInterval(harfInterval);
+                db.ref("oyunDurum").set("kapali");
+                db.ref("aktif").remove(); // Mevcut kelimeyi sil
+                db.ref("ogrenciler").remove(); // Tüm öğrenci verilerini sil
+                alert("Sistem tamamen sıfırlandı.");
             }
         }
 
         function kelimeEkle(){
             var k = document.getElementById("k").value.toUpperCase().trim();
             var a = document.getElementById("a").value.trim();
-            if(k && a) {
-                db.ref("kelimeler").push({kelime:k, anlam:a});
-                document.getElementById("k").value = ""; document.getElementById("a").value = "";
-            }
+            if(k && a) db.ref("kelimeler").push({kelime:k, anlam:a});
         }
 
-        // KELİME HAVUZUNU LİSTELE
         db.ref("kelimeler").on("value", s => {
             var html = "";
             s.forEach(e => {
                 var d = e.val();
-                html += `<div style="padding:10px; border-bottom:1px solid #eee;">
-                    <b>${d.kelime}</b> - ${d.anlam} 
-                    <button style="background:#3498db; color:white;" onclick="kelimeBaslat('${e.key}')">▶ OYUNU BAŞLAT</button>
-                    <button onclick="db.ref('kelimeler/${e.key}').remove()">❌ Sil</button>
-                </div>`;
+                html += `<div><b>${d.kelime}</b> <button onclick="kelimeBaslat('${e.key}')">BAŞLAT</button> <button onclick="db.ref('kelimeler/${e.key}').remove()">❌</button></div>`;
             });
             document.getElementById("havuz").innerHTML = html;
         });
@@ -113,26 +107,21 @@
                 var orjinal = d.kelime;
                 var gizli = orjinal.replace(/./g, "-");
                 var puan = 100;
-
                 var guncelle = (g, p) => db.ref("aktif").set({kelime:orjinal, gizli:g, anlam:d.anlam, puan:p});
                 guncelle(gizli, puan);
 
                 harfInterval = setInterval(() => {
-                    var kapaliIndeksler = [];
-                    for(var i=0; i<gizli.length; i++) if(gizli[i]=="-") kapaliIndeksler.push(i);
-
-                    if(kapaliIndeksler.length > 1 && puan > 10){
-                        var rastgele = kapaliIndeksler[Math.floor(Math.random()*kapaliIndeksler.length)];
+                    var kapali = [];
+                    for(var i=0; i<gizli.length; i++) if(gizli[i]=="-") kapali.push(i);
+                    if(kapali.length > 1 && puan > 10){
+                        var r = kapali[Math.floor(Math.random()*kapali.length)];
                         var dizi = gizli.split("");
-                        dizi[rastgele] = orjinal[rastgele];
+                        dizi[r] = orjinal[r];
                         gizli = dizi.join("");
                         puan -= 10;
                         guncelle(gizli, puan);
-                    } else {
-                        clearInterval(harfInterval);
-                    }
-                }, 20000); // 20 saniyede bir harf aç
-                alert(orjinal + " kelimesi için yarışma başladı!");
+                    } else { clearInterval(harfInterval); }
+                }, 20000);
             });
         }
     </script>
