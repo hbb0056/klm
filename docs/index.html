@@ -1,107 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>Kelime Avı - Giriş</title>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <meta charset="UTF-8">
+    <title>Kelime Avı - Giriş</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; background: #f4f4f9; }
+        .container { background: white; padding: 20px; display: inline-block; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input { padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #durum { margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <h2>👨‍🎓 Oyuna Katıl</h2>
+        <input id="ad" placeholder="Adınızı yazınız...">
+        <button onclick="giris()">Katıl</button>
+        <p id="durum"></p>
+    </div>
 
-<h2>👨‍🎓 Oyuna Katıl</h2>
+    <script>
+        var firebaseConfig = {
+            apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
+            authDomain: "kelime-avi-bec9f.firebaseapp.com",
+            databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
+            projectId: "kelime-avi-bec9f",
+            storageBucket: "kelime-avi-bec9f.appspot.com",
+            messagingSenderId: "154681825331",
+            appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
+        };
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.database();
 
-<input id="ad" placeholder="Adını yaz">
-<br><br>
+        var id = localStorage.getItem("id");
+        if(!id){
+            id = db.ref("ogrenciler").push().key;
+            localStorage.setItem("id", id);
+        }
 
-<button onclick="giris()">Katıl</button>
+        function giris(){
+            var ad = document.getElementById("ad").value.trim();
+            if(ad=="") return alert("Lütfen adınızı yazın!");
+            db.ref("ogrenciler/"+id).set({ ad: ad, onay: false, puan: 0 });
+            document.getElementById("durum").innerText = "⏳ Öğretmen onayı bekleniyor...";
+        }
 
-<p id="durum"></p>
-
-<script>
-
-var firebaseConfig = {
-  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
-  authDomain: "kelime-avi-bec9f.firebaseapp.com",
-  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-  projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.appspot.com",
-  messagingSenderId: "154681825331",
-  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
-
-var id = localStorage.getItem("id");
-
-if(!id){
-  id = db.ref("ogrenciler").push().key;
-  localStorage.setItem("id",id);
-}
-
-
-/* GİRİŞ */
-function giris(){
-
-  var ad=document.getElementById("ad").value.trim();
-
-  if(ad==""){
-    alert("Ad yazmadan olmaz!");
-    return;
-  }
-
-  db.ref("ogrenciler/"+id).set({
-    ad:ad,
-    onay:false,
-    puan:0
-  });
-
-  document.getElementById("durum").innerText="⏳ Onay bekleniyor...";
-}
-
-
-/* ONAY + OYUN KİLİDİ */
-
-db.ref("ogrenciler/"+id+"/onay").on("value",function(s){
-
-  if(s.val()==true){
-
-    // oyun açık mı?
-    db.ref("oyunDurum").once("value",function(d){
-
-      if(d.val()=="acik"){
-
-        window.location="oyun.html";
-
-      }else{
-
-        document.getElementById("durum").innerText=
-        "✔️ Onaylandı, oyun bekleniyor...";
-      }
-    });
-  }
-});
-
-
-/* OYUN AÇILINCA GİR */
-
-db.ref("oyunDurum").on("value",function(s){
-
-  if(s.val()=="acik"){
-
-    db.ref("ogrenciler/"+id+"/onay").once("value",function(d){
-
-      if(d.val()==true){
-
-        window.location="oyun.html";
-      }
-    });
-  }
-});
-
-</script>
-
+        // Onay ve Oyun Başlama Takibi
+        db.ref("ogrenciler/"+id+"/onay").on("value", function(s){
+            if(s.val() == true){
+                document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Oyunun başlaması bekleniyor...</span>";
+                db.ref("oyunDurum").on("value", function(d){
+                    if(d.val() == "acik") window.location.href = "oyun.html";
+                });
+            }
+        });
+    </script>
 </body>
 </html>
