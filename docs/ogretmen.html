@@ -7,30 +7,29 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; background: #fdfdfd; }
-        .box { border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 10px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        button { cursor: pointer; padding: 8px 15px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f4f4f4; }
+        .box { border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 10px; background: #fff; }
+        button { cursor: pointer; padding: 8px 15px; margin: 5px; border-radius: 5px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
     </style>
 </head>
 <body>
-    <h1>👩‍🏫 Öğretmen Yönetim Merkezi</h1>
+    <h1>👩‍🏫 Öğretmen Yönetim Paneli</h1>
 
     <div class="box">
-        <h3>🎮 Oyun Kontrolü</h3>
-        <button style="background:#2ecc71; color:white;" onclick="oyunAc()">OYUNU AÇ</button>
-        <button style="background:#e74c3c; color:white;" onclick="oyunKapat()">OYUNU KAPAT VE SİSTEMİ SIFIRLA</button>
+        <h3>1. Aşama: Girişleri Yönet</h3>
+        <button style="background:#2ecc71; color:white;" onclick="oyunAc()">OYUNU AÇ (Öğrencileri Al)</button>
+        <button style="background:#e74c3c; color:white;" onclick="oyunKapat()">OYUNU KAPAT (Sıfırla)</button>
     </div>
 
     <div class="box">
-        <h3>📊 Canlı Skor Tablosu</h3>
-        <div id="ogrenciListesi">Öğrenci bekleniyor...</div>
+        <h3>2. Aşama: Onay Bekleyenler ve Skorlar</h3>
+        <div id="ogrenciListesi">Öğrenci yok...</div>
     </div>
 
     <div class="box">
-        <h3>📚 Kelime Havuzu</h3>
-        <input id="k" placeholder="Kelime"> <input id="a" placeholder="Anlam" style="width:300px;">
+        <h3>3. Aşama: Kelime Gönder</h3>
+        <input id="k" placeholder="Kelime"> <input id="a" placeholder="Anlam/İpucu" style="width:250px;">
         <button onclick="kelimeEkle()">Havuza Ekle</button>
         <hr>
         <div id="havuz"></div>
@@ -50,38 +49,33 @@
         var db = firebase.database();
         var harfInterval;
 
-        // Skor Tablosu Dinleyici
+        // Öğrencileri ve puanları anlık listele
         db.ref("ogrenciler").on("value", function(s){
             var liste = [];
             s.forEach(e => { liste.push({id:e.key, ...e.val()}) });
             liste.sort((a,b) => (b.puan||0) - (a.puan||0));
 
-            var html = "<table><tr><th>Sıra</th><th>Öğrenci</th><th>Puan</th><th>İşlem</th></tr>";
-            liste.forEach((o, i) => {
+            var html = "<table><tr><th>Ad</th><th>Puan</th><th>Durum</th></tr>";
+            liste.forEach(o => {
                 html += `<tr>
-                    <td>${i+1}</td>
                     <td>${o.ad}</td>
                     <td><b>${o.puan||0}</b></td>
-                    <td>${o.onay ? '✅' : `<button onclick="onayla('${o.id}')">Onayla</button>`}</td>
+                    <td>${o.onay ? '✅ Onaylı' : `<button onclick="onayla('${o.id}')">Onayla</button>`}</td>
                 </tr>`;
             });
-            document.getElementById("ogrenciListesi").innerHTML = (liste.length > 0) ? html + "</table>" : "Bekleyen öğrenci yok.";
+            document.getElementById("ogrenciListesi").innerHTML = html + "</table>";
         });
 
         function onayla(id){ db.ref("ogrenciler/"+id+"/onay").set(true); }
         
-        function oyunAc(){ 
-            db.ref("oyunDurum").set("acik"); 
-        }
+        function oyunAc(){ db.ref("oyunDurum").set("acik"); alert("Girişler açıldı. Onayladığınız öğrenciler oyuna geçecek."); }
 
-        // TAM SIFIRLAMA YAPAN FONKSİYON
         function oyunKapat(){
-            if(confirm("Oyun kapatılacak ve TÜM ÖĞRENCİ LİSTESİ SİLİNECEK. Emin misiniz?")){
+            if(confirm("Tüm sistem sıfırlanacak. Emin misiniz?")){
                 if(harfInterval) clearInterval(harfInterval);
                 db.ref("oyunDurum").set("kapali");
-                db.ref("aktif").remove(); // Mevcut kelimeyi sil
-                db.ref("ogrenciler").remove(); // Tüm öğrenci verilerini sil
-                alert("Sistem tamamen sıfırlandı.");
+                db.ref("aktif").remove();
+                db.ref("ogrenciler").remove();
             }
         }
 
@@ -105,8 +99,9 @@
             db.ref("kelimeler/"+id).once("value", s => {
                 var d = s.val();
                 var orjinal = d.kelime;
-                var gizli = orjinal.replace(/./g, "-");
+                var gizli = orjinal.replace(/[A-ZÇĞİÖŞÜ]/g, "-");
                 var puan = 100;
+
                 var guncelle = (g, p) => db.ref("aktif").set({kelime:orjinal, gizli:g, anlam:d.anlam, puan:p});
                 guncelle(gizli, puan);
 
