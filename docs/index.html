@@ -16,7 +16,7 @@
 <body>
     <div class="login-box">
         <h2>👨‍🎓 Kelime Avı Giriş</h2>
-        <input id="ad" placeholder="Adınızı ve Soyadınızı Yazın">
+        <input id="ad" placeholder="Adınızı Yazın">
         <br>
         <button onclick="giris()">Oyuna Katıl</button>
         <p id="durum"></p>
@@ -45,19 +45,19 @@
             document.getElementById("durum").innerText = "⏳ Öğretmen onayı bekleniyor...";
         }
 
-        // Onay ve Oyun Durumu Takibi
-        db.ref("ogrenciler/"+id+"/onay").on("value", function(s){
-            if(s.val() == true){
-                document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Oyun başlayınca ekranınız değişecek.</span>";
-            } else {
-                document.getElementById("durum").innerText = "⏳ Onay bekleniyor...";
-            }
-        });
+        // Onay ve Oyun Durumu Dinleyici
+        db.ref("ogrenciler/"+id).on("value", function(s){
+            var veri = s.val();
+            if(!veri) return;
 
-        db.ref("oyunDurum").on("value", function(d){
-            if(d.val() == "acik"){
-                db.ref("ogrenciler/"+id+"/onay").once("value", function(s){
-                    if(s.val() == true) window.location.href = "oyun.html";
+            if(veri.onay == true){
+                document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Öğretmen oyunu başlattığında geçiş yapılacak.</span>";
+                
+                // Onaylıysa, oyunun açılmasını bekle
+                db.ref("oyunDurum").on("value", function(d){
+                    if(d.val() == "acik"){
+                        window.location.href = "oyun.html";
+                    }
                 });
             }
         });
