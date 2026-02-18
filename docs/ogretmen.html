@@ -8,23 +8,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
-body{
-  font-family:Arial;
-  background:#eee;
-  padding:20px;
-}
-
-.card{
-  background:white;
-  padding:10px;
-  margin:10px;
-  border-radius:5px;
-}
-
-button{
-  padding:8px;
-  margin:5px;
-}
+body{font-family:Arial;background:#f2f2f2;padding:20px}
+.card{background:white;padding:10px;margin:10px;border-radius:5px}
+button{padding:5px 10px}
 </style>
 </head>
 
@@ -32,15 +18,10 @@ button{
 
 <h1>📘 Öğretmen Paneli</h1>
 
-<button onclick="oyunuBaslat()">🎮 Oyunu Başlat</button>
-<button onclick="oyunuBitir()">⛔ Oyunu Bitir</button>
-
-<hr>
-
-<h3>Bekleyenler</h3>
+<h3>Bekleyen Öğrenciler</h3>
 <div id="bekleyen"></div>
 
-<h3>Onaylananlar</h3>
+<h3>Onaylanan Öğrenciler</h3>
 <div id="onayli"></div>
 
 <script>
@@ -62,23 +43,21 @@ const db = firebase.database();
 const bekleyen=document.getElementById("bekleyen");
 const onayli=document.getElementById("onayli");
 
-// Öğrencileri Dinle
 db.ref("ogrenciler").on("value", snap=>{
 
   bekleyen.innerHTML="";
   onayli.innerHTML="";
 
-  const data=snap.val();
-  if(!data) return;
+  let data=snap.val();
 
   for(let id in data){
 
-    const o=data[id];
+    let o=data[id];
 
-    const div=document.createElement("div");
+    let div=document.createElement("div");
     div.className="card";
 
-    div.innerHTML=`${o.ad} | Puan: ${o.puan || 0}`;
+    div.innerHTML=`${o.ad} | Puan: ${o.puan}`;
 
     if(o.onayli){
 
@@ -86,7 +65,7 @@ db.ref("ogrenciler").on("value", snap=>{
 
     }else{
 
-      const btn=document.createElement("button");
+      let btn=document.createElement("button");
       btn.innerText="Onayla";
 
       btn.onclick=()=>{
@@ -103,26 +82,6 @@ db.ref("ogrenciler").on("value", snap=>{
   }
 
 });
-
-// Oyunu Başlat
-function oyunuBaslat(){
-
-  db.ref("oyun").set({
-    basladi:true
-  });
-
-  alert("Oyun başladı!");
-}
-
-// Oyunu Bitir
-function oyunuBitir(){
-
-  db.ref("oyun").set({
-    basladi:false
-  });
-
-  alert("Oyun durduruldu!");
-}
 
 </script>
 
