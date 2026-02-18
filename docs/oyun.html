@@ -6,22 +6,22 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding-top: 30px; }
-        #kelime { font-size: 45px; letter-spacing: 12px; margin: 20px; font-family: 'Courier New', monospace; color: #333; }
-        .info-box { background: white; padding: 20px; display: inline-block; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 80%; }
-        input { padding: 15px; font-size: 18px; width: 70%; margin-bottom: 10px; border: 2px solid #ddd; border-radius: 8px; }
-        button { padding: 15px 30px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        button:disabled { background: #ccc; }
-        #mesaj { font-weight: bold; margin-top: 15px; color: #555; }
+        body { font-family: sans-serif; text-align: center; background: #eef2f3; padding-top: 50px; }
+        .game-card { background: white; padding: 30px; display: inline-block; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 85%; max-width: 600px; }
+        #kelime { font-size: 45px; letter-spacing: 15px; margin: 30px 0; font-family: 'Courier New', monospace; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        input { padding: 15px; font-size: 20px; width: 80%; border: 2px solid #3498db; border-radius: 10px; margin-bottom: 10px; text-align: center; }
+        button { padding: 15px 40px; font-size: 20px; background: #3498db; color: white; border: none; border-radius: 10px; cursor: pointer; }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        #mesaj { margin-top: 20px; font-size: 18px; font-weight: bold; color: #7f8c8d; }
     </style>
 </head>
 <body>
-    <div class="info-box">
+    <div class="game-card">
         <h1>🎯 Kelime Avı</h1>
-        <p><strong>İpucu:</strong> <span id="anlam">Yükleniyor...</span></p>
-        <h2 id="kelime">-----</h2>
-        
-        <input id="tahmin" placeholder="Tahmininizi yazın...">
+        <p><strong>İpucu:</strong> <span id="anlam">Bekleniyor...</span></p>
+        <div id="kelime">----</div>
+        <input id="tahmin" placeholder="Tahmininizi buraya yazın..." onkeypress="if(event.key=='Enter') gonder()">
+        <br>
         <button id="btnGonder" onclick="gonder()">Gönder</button>
         <p id="mesaj">Cevabını yaz ve gönder!</p>
     </div>
@@ -40,50 +40,42 @@
         var db = firebase.database();
         
         var ogrenciID = localStorage.getItem("id");
-        var dogruKelime = "";
-        var guncelPuan = 0;
-        var kelimeID = "";
+        var mevcutKelime = "";
+        var canliPuan = 0;
 
-        // Aktif kelimeyi ve puanı dinle
         db.ref("aktif").on("value", function(s){
             var d = s.val();
             if(!d) return;
 
-            // Eğer yeni bir kelimeye geçildiyse arayüzü sıfırla
-            if(kelimeID !== d.kelime){
-                kelimeID = d.kelime;
-                dogruKelime = d.kelime;
-                guncelPuan = d.puan;
+            // Öğretmen yeni kelimeye geçtiyse ekranı temizle ve aç
+            if(mevcutKelime !== d.kelime){
+                mevcutKelime = d.kelime;
                 document.getElementById("tahmin").disabled = false;
                 document.getElementById("btnGonder").disabled = false;
                 document.getElementById("tahmin").value = "";
-                document.getElementById("mesaj").innerText = "Yeni kelime! Cevabını gönder.";
-                document.getElementById("mesaj").style.color = "#555";
+                document.getElementById("mesaj").innerText = "Yeni kelime geldi! Başarılar.";
+                document.getElementById("mesaj").style.color = "#7f8c8d";
             }
-            
-            // Harfler ve Puan öğretmen tarafında değiştikçe güncellenir
+
             document.getElementById("anlam").innerText = d.anlam;
             document.getElementById("kelime").innerText = d.gizli;
-            guncelPuan = d.puan; 
+            canliPuan = d.puan;
         });
 
         function gonder(){
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             if(t == "") return;
 
-            // Öğretmene sonucu sessizce gönder
-            if(t === dogruKelime){
-                // Doğruysa puanı transaction ile ekle
-                db.ref("ogrenciler/"+ogrenciID+"/puan").transaction(function(p){
-                    return (p || 0) + guncelPuan;
-                });
+            // SESSİZ KONTROL: Doğruysa puanı artır, değilse hiçbir şey yapma
+            if(t === mevcutKelime){
+                db.ref("ogrenciler/"+ogrenciID+"/puan").transaction(p => (p||0) + canliPuan);
             }
 
-            // Arayüzü kilitle (Geri dönüt yok!)
+            // Geri dönüt vermeden ekranı kilitle
             document.getElementById("tahmin").disabled = true;
             document.getElementById("btnGonder").disabled = true;
-            document.getElementById("mesaj").innerText = "✔️ Cevabın kaydedildi. Diğer kelime bekleniyor...";
-            document.getElementById("mesaj").style.color = "blue";
+            document.getElementById("mesaj").innerText = "✔️ Cevabın alındı. Diğer kelimeyi bekle...";
+            document.getElementById("mesaj").style.color = "#2980b9";
         }
     </script>
 </body>
