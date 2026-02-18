@@ -20,7 +20,7 @@
         <h1>🎯 Kelime Avı</h1>
         <p><strong>İpucu:</strong> <span id="anlam">Bekleniyor...</span></p>
         <div id="kelime">----</div>
-        <input id="tahmin" placeholder="Tahmininizi buraya yazın..." onkeypress="if(event.key=='Enter') gonder()">
+        <input id="tahmin" placeholder="Tahmininizi yazın...">
         <br>
         <button id="btnGonder" onclick="gonder()">Gönder</button>
         <p id="mesaj">Cevabını yaz ve gönder!</p>
@@ -43,20 +43,21 @@
         var mevcutKelime = "";
         var canliPuan = 0;
 
+        // Oyun kapatıldığında giriş sayfasına yönlendir
+        db.ref("oyunDurum").on("value", function(d){
+            if(d.val() == "kapali") window.location.href = "index.html";
+        });
+
         db.ref("aktif").on("value", function(s){
             var d = s.val();
             if(!d) return;
-
-            // Öğretmen yeni kelimeye geçtiyse ekranı temizle ve aç
             if(mevcutKelime !== d.kelime){
                 mevcutKelime = d.kelime;
                 document.getElementById("tahmin").disabled = false;
                 document.getElementById("btnGonder").disabled = false;
                 document.getElementById("tahmin").value = "";
-                document.getElementById("mesaj").innerText = "Yeni kelime geldi! Başarılar.";
-                document.getElementById("mesaj").style.color = "#7f8c8d";
+                document.getElementById("mesaj").innerText = "Yeni kelime geldi!";
             }
-
             document.getElementById("anlam").innerText = d.anlam;
             document.getElementById("kelime").innerText = d.gizli;
             canliPuan = d.puan;
@@ -65,17 +66,12 @@
         function gonder(){
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             if(t == "") return;
-
-            // SESSİZ KONTROL: Doğruysa puanı artır, değilse hiçbir şey yapma
             if(t === mevcutKelime){
                 db.ref("ogrenciler/"+ogrenciID+"/puan").transaction(p => (p||0) + canliPuan);
             }
-
-            // Geri dönüt vermeden ekranı kilitle
             document.getElementById("tahmin").disabled = true;
             document.getElementById("btnGonder").disabled = true;
-            document.getElementById("mesaj").innerText = "✔️ Cevabın alındı. Diğer kelimeyi bekle...";
-            document.getElementById("mesaj").style.color = "#2980b9";
+            document.getElementById("mesaj").innerText = "✔️ Cevabın alındı.";
         }
     </script>
 </body>
