@@ -1,135 +1,102 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Kelime Avı - Öğretmen</title>
+<title>Öğretmen Paneli</title>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase.js"></script>
-
-<style>
-body{
-  font-family:Arial;
-  background:#eee;
-  padding:20px;
-}
-
-.card{
-  background:white;
-  padding:10px;
-  margin:10px;
-  border-radius:6px;
-}
-
-button{
-  padding:8px;
-  margin:5px;
-}
-</style>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 
 <body>
 
-<h1>📘 Öğretmen Paneli</h1>
+<h2>👩‍🏫 Öğretmen Paneli</h2>
 
-<button onclick="oyunuBaslat()">🎮 Oyunu Başlat</button>
-<button onclick="oyunuBitir()">⛔ Oyunu Bitir</button>
+<h3>📌 Yeni Kelime Ekle</h3>
+
+<input id="kelime" placeholder="Kelime"><br><br>
+<input id="anlam" placeholder="Anlam"><br><br>
+
+<button onclick="ekle()">Havuza Ekle</button>
 
 <hr>
 
-<h3>Bekleyen Öğrenciler</h3>
-<div id="bekleyen"></div>
+<h3>📚 Kelime Havuzu</h3>
 
-<h3>Onaylananlar</h3>
-<div id="onayli"></div>
+<div id="liste"></div>
 
 <script>
 
-// Firebase Ayarları
 var firebaseConfig = {
   apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
   databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
   projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
+  storageBucket: "kelime-avi-bec9f.appspot.com",
   messagingSenderId: "154681825331",
   appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
 
 firebase.initializeApp(firebaseConfig);
-
 var db = firebase.database();
 
-var bekleyen = document.getElementById("bekleyen");
-var onayli = document.getElementById("onayli");
+function ekle(){
 
+  var k=document.getElementById("kelime").value.toUpperCase();
+  var a=document.getElementById("anlam").value;
 
-// Öğrencileri Dinle
-db.ref("ogrenciler").on("value", function(snap){
-
-  bekleyen.innerHTML="";
-  onayli.innerHTML="";
-
-  var data = snap.val();
-  if(!data) return;
-
-  for(var id in data){
-
-    var o = data[id];
-
-    var div = document.createElement("div");
-    div.className="card";
-
-    div.innerHTML = o.ad+" | Puan: "+o.puan;
-
-    if(o.onayli){
-
-      onayli.appendChild(div);
-
-    }else{
-
-      var btn = document.createElement("button");
-      btn.innerText="Onayla";
-
-      btn.onclick = function(i){
-
-        return function(){
-
-          db.ref("ogrenciler/"+i).update({
-            onayli:true
-          });
-
-        };
-
-      }(id);
-
-      div.appendChild(btn);
-      bekleyen.appendChild(div);
-    }
-
+  if(k==""||a==""){
+    alert("Boş bırakma");
+    return;
   }
 
-});
-
-
-// Oyunu Başlat
-function oyunuBaslat(){
-
-  db.ref("oyun").set({
-    basladi:true
+  db.ref("kelimeler").push({
+    kelime:k,
+    anlam:a
   });
 
-  alert("Oyun başladı!");
+  document.getElementById("kelime").value="";
+  document.getElementById("anlam").value="";
 }
 
+db.ref("kelimeler").on("value",function(s){
 
-// Oyunu Bitir
-function oyunuBitir(){
+  var html="";
 
-  db.ref("oyun").set({
-    basladi:false
+  s.forEach(function(e){
+
+    var d=e.val();
+
+    html+=`
+    <b>${d.kelime}</b> : ${d.anlam}
+    <button onclick="baslat('${e.key}')">Başlat</button>
+    <br><br>
+    `;
   });
 
-  alert("Oyun bitti!");
+  document.getElementById("liste").innerHTML=html;
+});
+
+function baslat(id){
+
+  db.ref("kelimeler/"+id).once("value",function(s){
+
+    var d=s.val();
+
+    var gizli="";
+
+    for(var i=0;i<d.kelime.length;i++){
+      gizli+="-";
+    }
+
+    db.ref("aktif").set({
+      kelime:d.kelime,
+      gizli:gizli,
+      anlam:d.anlam
+    });
+
+    alert("Oyun başladı!");
+  });
 }
 
 </script>
