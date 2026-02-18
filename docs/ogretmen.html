@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Öğretmen Paneli</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+body{font-family:Arial;background:#eee;padding:20px}
+.card{background:#fff;padding:10px;margin:10px;border-radius:6px}
+button{padding:5px}
+</style>
+</head>
+
+<body>
+
+<h1>📘 Öğretmen Paneli</h1>
+
+<h3>Bekleyenler</h3>
+<div id="bekleyen"></div>
+
+<h3>Onaylananlar</h3>
+<div id="onayli"></div>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
+  authDomain: "kelime-avi-bec9f.firebaseapp.com",
+  projectId: "kelime-avi-bec9f",
+  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
+  messagingSenderId: "154681825331",
+  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46",
+  databaseURL:"https://kelime-avi-bec9f-default-rtdb.firebaseio.com"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+const bekleyen=document.getElementById("bekleyen");
+const onayli=document.getElementById("onayli");
+
+db.ref("ogrenciler").on("value", snap=>{
+
+  bekleyen.innerHTML="";
+  onayli.innerHTML="";
+
+  let data=snap.val();
+
+  for(let id in data){
+
+    let o=data[id];
+
+    let div=document.createElement("div");
+    div.className="card";
+
+    div.innerHTML=`${o.ad} | Puan: ${o.puan}`;
+
+    if(o.onayli){
+
+      onayli.appendChild(div);
+
+    }else{
+
+      let btn=document.createElement("button");
+      btn.innerText="Onayla";
+
+      btn.onclick=()=>{
+
+        db.ref("ogrenciler/"+id).update({
+          onayli:true
+        });
+
+      };
+
+      div.appendChild(btn);
+      bekleyen.appendChild(div);
+    }
+  }
+
+});
+
+</script>
+
+</body>
+</html>
