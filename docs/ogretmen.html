@@ -2,37 +2,52 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Turnuva Yönetimi</title>
+    <title>Turnuva Yönetim Merkezi</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        button { cursor: pointer; padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; margin: 5px; }
-        .btn-green { background: #27ae60; color: white; }
-        .btn-red { background: #c0392b; color: white; }
-        .match-box { border-left: 5px solid #2980b9; background: #ecf0f1; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 200px; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        h1 { color: #1a1a2e; border-bottom: 3px solid #e94560; display: inline-block; padding-bottom: 5px; }
+        button { cursor: pointer; padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; transition: 0.3s; }
+        .btn-main { background: #2ecc71; color: white; font-size: 1.1em; }
+        .btn-reset { background: #e74c3c; color: white; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .group-box { background: #fff; border: 2px solid #ddd; padding: 15px; border-radius: 10px; }
+        .winner { color: #27ae60; font-weight: bold; }
+        .loser { color: #c0392b; text-decoration: line-through; font-size: 0.9em; }
+        .match-card { background: #f8f9fa; border: 1px solid #eee; padding: 10px; margin-top: 5px; border-radius: 5px; font-size: 0.9em; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; color: white; }
+        .tag-active { background: #3498db; }
+        .tag-done { background: #95a5a6; }
     </style>
 </head>
 <body>
-    <h1>🏟️ Kelime Turnuvası Yönetimi</h1>
+    <h1>🏟️ Turnuva Yönetim Merkezi</h1>
 
     <div class="card">
-        <h3>1. Kelime Havuzu Oluştur (En az 3 kelime)</h3>
-        <input id="k" placeholder="Kelime"> <input id="a" placeholder="İpucu">
-        <button class="btn-green" onclick="ekle()">Havuzuna Ekle</button>
-        <div id="havuz-sayisi" style="margin-top:10px; font-weight:bold;">Havuzdaki Kelime: 0</div>
+        <h3>1. Kelime Havuzu</h3>
+        <input id="k" placeholder="Kelime" style="padding:10px; width:150px;">
+        <input id="a" placeholder="İpucu" style="padding:10px; width:200px;">
+        <button class="btn-main" onclick="ekle()">Ekle</button>
+        <div id="havuzBilgi" style="margin-top:10px; font-size:0.9em;">Havuz: 0 kelime</div>
     </div>
 
-    <div class="card">
-        <button class="btn-green" onclick="eslestir()">🤝 RAKİPLERİ EŞLEŞTİR VE BAŞLAT</button>
-        <button class="btn-red" onclick="sifirla()">🧹 SİSTEMİ SIFIRLA</button>
+    <div class="card" style="text-align:center;">
+        <button class="btn-main" onclick="eslestir()">⚔️ YENİ TUR EŞLEŞMELERİNİ YAP VE BAŞLAT</button>
+        <button class="btn-reset" onclick="sifirla()">🧹 SİSTEMİ SIFIRLA</button>
     </div>
 
-    <div class="card">
-        <h3>⚔️ Canlı Düellolar (3 Kelimelik Maçlar)</h3>
-        <div id="macListesi"></div>
+    <div class="grid-container">
+        <div class="group-box">
+            <h3>📈 Oyuncu Durumları</h3>
+            <div id="oyuncular">Yükleniyor...</div>
+        </div>
+
+        <div class="group-box" style="grid-column: span 2;">
+            <h3>🏟️ Maç Tablosu (Şampiyonlar Ligi Modu)</h3>
+            <div id="maclar">Henüz maç başlamadı.</div>
+        </div>
     </div>
 
     <script>
@@ -51,77 +66,70 @@
         function ekle() {
             var k = document.getElementById("k").value.toUpperCase().trim();
             var a = document.getElementById("a").value.trim();
-            if(k && a) {
-                db.ref("turnuva/havuz").push({k: k, i: a});
-                document.getElementById("k").value = "";
-                document.getElementById("a").value = "";
-            }
+            if(k && a) { db.ref("turnuva/havuz").push({k,a}); document.getElementById("k").value=""; document.getElementById("a").value=""; }
         }
 
-        db.ref("turnuva/havuz").on("value", s => {
-            document.getElementById("havuz-sayisi").innerText = "Havuzdaki Kelime: " + s.numChildren();
-        });
+        db.ref("turnuva/havuz").on("value", s => { document.getElementById("havuzBilgi").innerText = "Havuzda " + s.numChildren() + " kelime var."; });
 
+        // ŞAMPİYONLAR LİGİ EŞLEŞTİRME MANTIĞI
         function eslestir() {
-            db.ref("turnuva").once("value", turnuvaS => {
-                var havuz = [];
-                turnuvaS.child("havuz").forEach(h => { havuz.push(h.val()); });
-                if(havuz.length < 3) return alert("Önce havuzda en az 3 kelime olmalı!");
+            db.ref("turnuva").once("value", ts => {
+                var havuz = []; ts.child("havuz").forEach(h => { havuz.push(h.val()); });
+                if(havuz.length < 3) return alert("Havuzda en az 3 kelime olmalı!");
 
                 var bekleyenler = [];
-                turnuvaS.child("oyuncular").forEach(o => { 
-                    if(o.val().durum === "bekliyor") bekleyenler.push({id: o.key, ad: o.val().ad}); 
-                });
+                ts.child("oyuncular").forEach(o => { if(o.val().durum === "bekliyor") bekleyenler.push({id:o.key, ad:o.val().ad}); });
 
-                for(var i=0; i < bekleyenler.length; i+=2) {
+                if(bekleyenler.length < 2) return alert("Eşleşecek yeterli oyuncu kalmadı. Şampiyon belli olmuş olabilir!");
+
+                for(let i=0; i<bekleyenler.length; i+=2) {
                     if(bekleyenler[i+1]) {
-                        var p1 = bekleyenler[i];
-                        var p2 = bekleyenler[i+1];
+                        var p1 = bekleyenler[i], p2 = bekleyenler[i+1];
+                        var secilenler = havuz.sort(() => 0.5 - Math.random()).slice(0,3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
                         
-                        // Rastgele 3 kelime seç
-                        var secilenler = havuz.sort(() => 0.5 - Math.random()).slice(0, 3).map(item => ({
-                            k: item.k, i: item.i, gizli: item.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")
-                        }));
-
-                        var macID = db.ref("turnuva/maclar").push().key;
-                        db.ref("turnuva/maclar/" + macID).set({
-                            p1: p1.id, p2: p2.id, p1_ad: p1.ad, p2_ad: p2.ad,
-                            kelimeler: secilenler, aktifRaunt: 0,
-                            p1_skor: 0, p2_skor: 0, durum: "aktif", winner: ""
+                        var mid = db.ref("turnuva/maclar").push().key;
+                        db.ref("turnuva/maclar/"+mid).set({
+                            p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad,
+                            kelimeler:secilenler, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:""
                         });
-                        
-                        db.ref("turnuva/oyuncular/" + p1.id + "/durum").set("eslesti");
-                        db.ref("turnuva/oyuncular/" + p2.id + "/durum").set("eslesti");
+                        db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
+                        db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
                     }
                 }
             });
         }
 
-        db.ref("turnuva/maclar").on("value", s => {
-            var html = "";
-            s.forEach(m => {
+        // MAÇ VE OYUNCU TAKİBİ
+        db.ref("turnuva").on("value", s => {
+            var oHTML = "", mHTML = "";
+            var oyuncular = s.child("oyuncular");
+            var maclar = s.child("maclar");
+
+            oyuncular.forEach(o => {
+                var d = o.val();
+                oHTML += `<div>• ${d.ad} <small>(${d.durum})</small></div>`;
+            });
+            document.getElementById("oyuncular").innerHTML = oHTML || "Oyuncu yok.";
+
+            maclar.forEach(m => {
                 var v = m.val();
-                html += `<div class="match-box">
-                    <b>${v.p1_ad} (${v.p1_skor}) vs ${v.p2_ad} (${v.p2_skor})</b><br>
-                    Durum: ${v.durum === "aktif" ? "Devam Ediyor (Kelime "+(v.aktifRaunt+1)+")" : "BİTTİ - Kazanan: " + v.winner}
+                var statusTag = v.durum === "aktif" ? '<span class="tag tag-active">Canlı Maç</span>' : '<span class="tag tag-done">Bitti</span>';
+                mHTML += `<div class="match-card">
+                    ${statusTag}<br>
+                    <span class="${v.winner === v.p1 ? 'winner' : (v.durum==='bitti'?'loser':'')}">${v.p1_ad} (${v.p1_skor})</span> vs 
+                    <span class="${v.winner === v.p2 ? 'winner' : (v.durum==='bitti'?'loser':'')}">${v.p2_ad} (${v.p2_skor})</span>
                 </div>`;
-                
+
                 if(v.durum === "bitti" && v.winner !== "") {
-                    db.ref("turnuva/oyuncular/" + v.winner + "/durum").set("bekliyor");
-                    var loser = (v.winner === v.p1) ? v.p2 : v.p1;
-                    db.ref("turnuva/oyuncular/" + loser).remove();
+                    db.ref("turnuva/oyuncular/"+v.winner+"/durum").set("bekliyor");
+                    var loser = v.winner === v.p1 ? v.p2 : v.p1;
+                    db.ref("turnuva/oyuncular/"+loser+"/durum").set("elendi");
                 }
             });
-            document.getElementById("macListesi").innerHTML = html;
+            document.getElementById("maclar").innerHTML = mHTML;
         });
 
-        function sifirla() {
-            if(confirm("Tüm turnuva ve oyuncular silinsin mi?")) {
-                db.ref("turnuva/oyuncular").remove();
-                db.ref("turnuva/maclar").remove();
-                location.reload();
-            }
-        }
+        function sifirla() { if(confirm("Tüm turnuva silinsin mi?")) { db.ref("turnuva").remove(); location.reload(); } }
     </script>
 </body>
 </html>
