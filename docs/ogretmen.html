@@ -2,21 +2,45 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Öğretmen</title>
+<title>Öğretmen Paneli</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<style>
+button{
+  margin:3px;
+}
+</style>
 </head>
 
 <body>
 
 <h2>👩‍🏫 Öğretmen Paneli</h2>
 
-<h3>Bekleyen Öğrenciler</h3>
+<!-- ÖĞRENCİ ONAY -->
 
+<h3>👨‍🎓 Öğrenciler</h3>
+<div id="ogrenciListe"></div>
+
+<hr>
+
+<!-- HAVUZ EKLE -->
+
+<h3>➕ Kelime Ekle</h3>
+
+<input id="kelime" placeholder="Kelime">
+<input id="anlam" placeholder="Anlam">
+
+<button onclick="ekle()">Ekle</button>
+
+<hr>
+
+<!-- HAVUZ -->
+
+<h3>📚 Kelime Havuzu</h3>
 <div id="liste"></div>
 
-<button onclick="baslat()">🎮 Oyunu Başlat</button>
 
 <script>
 
@@ -34,7 +58,8 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 
-/* LİSTE */
+/* ÖĞRENCİLER */
+
 db.ref("ogrenciler").on("value",function(s){
 
   var html="";
@@ -44,15 +69,59 @@ db.ref("ogrenciler").on("value",function(s){
     var d=e.val();
 
     html+=`
-    ${d.ad}
+    ${d.ad} (${d.onay?"✔️":"⏳"})
 
-    (${d.onay?"Onaylı":"Bekliyor"})
-
-    <button onclick="onayla('${e.key}')">
-    ✔️
-    </button>
-
+    <button onclick="onayla('${e.key}')">Onayla</button>
     <br>
+    `;
+  });
+
+  document.getElementById("ogrenciListe").innerHTML=html;
+});
+
+function onayla(id){
+
+  db.ref("ogrenciler/"+id+"/onay").set(true);
+}
+
+
+/* KELİME EKLE */
+
+function ekle(){
+
+  var k=document.getElementById("kelime").value.toUpperCase();
+  var a=document.getElementById("anlam").value;
+
+  if(k==""||a=="") return;
+
+  db.ref("kelimeler").push({
+    kelime:k,
+    anlam:a
+  });
+
+  document.getElementById("kelime").value="";
+  document.getElementById("anlam").value="";
+}
+
+
+/* HAVUZ */
+
+db.ref("kelimeler").on("value",function(s){
+
+  var html="";
+
+  s.forEach(function(e){
+
+    var d=e.val();
+
+    html+=`
+    <b>${d.kelime}</b> - ${d.anlam}
+
+    <button onclick="baslat('${e.key}')">▶ Başlat</button>
+
+    <button onclick="sil('${e.key}')">❌</button>
+
+    <br><br>
     `;
   });
 
@@ -60,19 +129,36 @@ db.ref("ogrenciler").on("value",function(s){
 });
 
 
-/* ONAY */
-function onayla(id){
+/* SİL */
 
-  db.ref("ogrenciler/"+id+"/onay").set(true);
+function sil(id){
+
+  db.ref("kelimeler/"+id).remove();
 }
 
 
 /* BAŞLAT */
-function baslat(){
 
-  db.ref("oyunDurum").set("basladi");
+function baslat(id){
 
-  alert("Oyun başladı");
+  db.ref("kelimeler/"+id).once("value",function(s){
+
+    var d=s.val();
+
+    var gizli="";
+
+    for(var i=0;i<d.kelime.length;i++){
+      gizli+="-";
+    }
+
+    db.ref("aktif").set({
+      kelime:d.kelime,
+      gizli:gizli,
+      anlam:d.anlam
+    });
+
+    alert("Oyun başladı!");
+  });
 }
 
 </script>
