@@ -2,15 +2,15 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Kelime Turnuvası - Giriş</title>
+    <title>Kelime Turnuvası - Lobi</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 100px; background: #1a1a2e; color: white; }
-        .box { background: #16213e; padding: 40px; display: inline-block; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #0f3460; }
+        .box { background: #16213e; padding: 40px; display: inline-block; border-radius: 20px; border: 1px solid #0f3460; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         input { padding: 15px; font-size: 18px; border-radius: 10px; border: none; width: 280px; margin-bottom: 20px; outline: none; }
         button { padding: 15px 40px; font-size: 18px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #status { margin-top: 20px; color: #a2a8d3; }
+        #status { margin-top: 20px; color: #a2a8d3; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -19,9 +19,9 @@
         <div id="form">
             <input id="ad" placeholder="Adınız ve Soyadınız">
             <br>
-            <button onclick="kaydol()">KATIL</button>
+            <button onclick="kaydol()">TURNUVAYA KATIL</button>
         </div>
-        <p id="status">Lütfen isminizi yazıp bekleyin.</p>
+        <p id="status">İsminizi yazıp 'Katıl' butonuna basın.</p>
     </div>
 
     <script>
@@ -41,8 +41,8 @@
 
         function kaydol() {
             var ad = document.getElementById("ad").value.trim();
-            if(!ad) return alert("İsim yazmalısın!");
-            db.ref("turnuva/oyuncular/" + id).set({ ad: ad, durum: "onay_bekliyor" });
+            if(!ad) return alert("Lütfen isminizi yazın!");
+            db.ref("turnuva/oyuncular/" + id).update({ ad: ad, durum: "onay_bekliyor" });
             document.getElementById("form").style.display = "none";
             document.getElementById("status").innerText = "⏳ Kayıt başarılı. Öğretmen onayı bekleniyor...";
         }
@@ -50,8 +50,12 @@
         db.ref("turnuva/oyuncular/" + id).on("value", s => {
             if(s.exists()){
                 var d = s.val().durum;
-                if(d === "bekliyor") document.getElementById("status").innerText = "✔️ Onaylandınız! Rakip bekleniyor...";
+                if(d === "bekliyor") document.getElementById("status").innerText = "✔️ Onaylandınız! Yeni tur eşleşmesi bekleniyor...";
                 if(d === "eslesti") window.location.href = "oyun.html";
+                if(d === "elendi") {
+                    document.getElementById("form").style.display = "none";
+                    document.getElementById("status").innerHTML = "<span style='color:#e74c3c'>❌ Elendiniz.</span><br>Bir sonraki turnuvada başarılar!";
+                }
             }
         });
     </script>
