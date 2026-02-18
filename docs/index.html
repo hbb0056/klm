@@ -6,7 +6,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding-top: 100px; background: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 100px; background: #f0f2f5; }
         .login-box { background: white; padding: 40px; display: inline-block; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         input { padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; width: 250px; margin-bottom: 15px; }
         button { padding: 12px 30px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
@@ -41,15 +41,23 @@
         function giris(){
             var ad = document.getElementById("ad").value.trim();
             if(ad=="") return alert("İsim yazmalısın!");
-            db.ref("ogrenciler/"+id).update({ ad: ad, onay: false, puan: 0 });
+            db.ref("ogrenciler/"+id).set({ ad: ad, onay: false, puan: 0 });
             document.getElementById("durum").innerText = "⏳ Öğretmen onayı bekleniyor...";
         }
 
+        // Onay ve Oyun Durumu Takibi
         db.ref("ogrenciler/"+id+"/onay").on("value", function(s){
             if(s.val() == true){
                 document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Oyun başlayınca ekranınız değişecek.</span>";
-                db.ref("oyunDurum").on("value", function(d){
-                    if(d.val() == "acik") window.location.href = "oyun.html";
+            } else {
+                document.getElementById("durum").innerText = "⏳ Onay bekleniyor...";
+            }
+        });
+
+        db.ref("oyunDurum").on("value", function(d){
+            if(d.val() == "acik"){
+                db.ref("ogrenciler/"+id+"/onay").once("value", function(s){
+                    if(s.val() == true) window.location.href = "oyun.html";
                 });
             }
         });
