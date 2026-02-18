@@ -11,19 +11,18 @@
         #kelime { font-size: 45px; letter-spacing: 15px; margin: 30px 0; font-family: 'Courier New', monospace; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
         input { padding: 15px; font-size: 20px; width: 80%; border: 2px solid #3498db; border-radius: 10px; margin-bottom: 10px; text-align: center; }
         button { padding: 15px 40px; font-size: 20px; background: #3498db; color: white; border: none; border-radius: 10px; cursor: pointer; }
-        button:disabled { background: #bdc3c7; cursor: not-allowed; }
         #mesaj { margin-top: 20px; font-size: 18px; font-weight: bold; color: #7f8c8d; }
     </style>
 </head>
 <body>
     <div class="game-card">
         <h1>🎯 Kelime Avı</h1>
-        <p><strong>İpucu:</strong> <span id="anlam">Bekleniyor...</span></p>
+        <p><strong>İpucu:</strong> <span id="anlam">Kelime bekleniyor...</span></p>
         <div id="kelime">----</div>
         <input id="tahmin" placeholder="Tahmininizi yazın...">
         <br>
         <button id="btnGonder" onclick="gonder()">Gönder</button>
-        <p id="mesaj">Cevabını yaz ve gönder!</p>
+        <p id="mesaj">Öğretmenin kelime göndermesi bekleniyor...</p>
     </div>
 
     <script>
@@ -43,14 +42,19 @@
         var mevcutKelime = "";
         var canliPuan = 0;
 
-        // Oyun kapatıldığında giriş sayfasına yönlendir
+        // Oyun durumu kapalıysa index'e dön
         db.ref("oyunDurum").on("value", function(d){
-            if(d.val() == "kapali") window.location.href = "index.html";
+            if(d.val() !== "acik") window.location.href = "index.html";
         });
 
+        // Aktif kelime verisini dinle
         db.ref("aktif").on("value", function(s){
             var d = s.val();
-            if(!d) return;
+            if(!d) {
+                document.getElementById("mesaj").innerText = "Sıradaki kelime bekleniyor...";
+                return;
+            }
+
             if(mevcutKelime !== d.kelime){
                 mevcutKelime = d.kelime;
                 document.getElementById("tahmin").disabled = false;
@@ -58,6 +62,7 @@
                 document.getElementById("tahmin").value = "";
                 document.getElementById("mesaj").innerText = "Yeni kelime geldi!";
             }
+
             document.getElementById("anlam").innerText = d.anlam;
             document.getElementById("kelime").innerText = d.gizli;
             canliPuan = d.puan;
@@ -65,13 +70,15 @@
 
         function gonder(){
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
-            if(t == "") return;
+            if(t == "" || !mevcutKelime) return;
+
             if(t === mevcutKelime){
                 db.ref("ogrenciler/"+ogrenciID+"/puan").transaction(p => (p||0) + canliPuan);
             }
+
             document.getElementById("tahmin").disabled = true;
             document.getElementById("btnGonder").disabled = true;
-            document.getElementById("mesaj").innerText = "✔️ Cevabın alındı.";
+            document.getElementById("mesaj").innerText = "✔️ Cevabın kaydedildi.";
         }
     </script>
 </body>
