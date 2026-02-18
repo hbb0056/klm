@@ -6,27 +6,28 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; padding-top: 20px; }
-        .arena { background: #16213e; padding: 25px; display: inline-block; border-radius: 20px; width: 90%; max-width: 600px; border: 3px solid #e94560; }
-        .vs-header { font-size: 22px; margin-bottom: 15px; color: #00d2ff; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; }
-        .skor-board { font-size: 26px; font-weight: bold; margin-bottom: 15px; color: #f1c40f; }
-        #kelime { font-size: 45px; letter-spacing: 12px; font-family: 'Courier New', monospace; margin: 20px 0; background: #1a1a2e; padding: 20px; border-radius: 10px; color: #ffffff; text-shadow: 0 0 10px #e94560; }
-        input { padding: 15px; font-size: 20px; width: 80%; border-radius: 10px; border: none; margin-bottom: 10px; text-align: center; outline: none; }
-        button { padding: 15px 40px; font-size: 20px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #ipucu-sistemi { color: #2ecc71; font-weight: bold; margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; padding-top: 30px; }
+        .arena { background: #16213e; padding: 25px; display: inline-block; border-radius: 20px; width: 90%; max-width: 500px; border: 3px solid #e94560; }
+        .header { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        .vs-text { font-size: 20px; color: #00d2ff; font-weight: bold; }
+        .score-text { font-size: 30px; color: #f1c40f; margin: 10px 0; }
+        #kelime { font-size: 40px; letter-spacing: 10px; font-family: monospace; background: #1a1a2e; padding: 15px; border-radius: 10px; margin: 20px 0; }
+        input { padding: 15px; font-size: 18px; width: 80%; border-radius: 10px; border: none; outline: none; text-align: center; }
+        button { padding: 15px 30px; font-size: 18px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="arena">
-        <div class="vs-header" id="eslesme-isim">YÜKLENİYOR...</div>
-        <div id="raunt-no" style="color:#e94560; font-weight:bold;">Raunt: 1 / 3</div>
-        <div class="skor-board" id="skor">0 - 0</div>
-        <div id="ipucu-sistemi">💡 Harf bekleniyor...</div>
-        <p>İpucu: <span id="ipucu-metin" style="color:#f1c40f">...</span></p>
+        <div class="header">
+            <div id="rakip-ad" class="vs-text">Rakip Bekleniyor...</div>
+            <div id="skor" class="score-text">0 - 0</div>
+            <div id="raunt">Raunt: 1 / 3</div>
+        </div>
+        <p>İpucu: <span id="ipucu" style="color:#f1c40f">...</span></p>
         <div id="kelime">-----</div>
-        <input id="tahmin" placeholder="Cevabı yaz ve Enter'a bas" autofocus onkeypress="if(event.key === 'Enter') gonder()">
+        <input id="tahmin" placeholder="Cevabı yazın..." onkeypress="if(event.key === 'Enter') gonder()">
         <br>
-        <button id="btn" onclick="gonder()">GÖNDER</button>
+        <button onclick="gonder()">GÖNDER</button>
     </div>
 
     <script>
@@ -41,57 +42,49 @@
         };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
-        var id = localStorage.getItem("turnuva_id");
+        var myID = localStorage.getItem("turnuva_id");
         var macID = "";
 
         db.ref("turnuva/maclar").on("value", s => {
             s.forEach(m => {
                 var v = m.val();
-                if((v.p1 === id || v.p2 === id) && v.durum === "aktif") {
+                if((v.p1 === myID || v.p2 === myID) && v.durum === "aktif") {
                     macID = m.key;
                     var r = v.aktifRaunt;
-                    
-                    // Rakip İsmi Gösterimi
-                    var rakipAd = (v.p1 === id) ? v.p2_ad : v.p1_ad;
-                    document.getElementById("eslesme-isim").innerText = `⚔️ RAKİBİN: ${rakipAd}`;
-                    
+                    document.getElementById("rakip-ad").innerText = "VS " + (v.p1 === myID ? v.p2_ad : v.p1_ad);
+                    document.getElementById("skor").innerText = v.p1 === myID ? `${v.p1_skor} - ${v.p2_skor}` : `${v.p2_skor} - ${v.p1_skor}`;
+                    document.getElementById("raunt").innerText = "Raunt: " + (r + 1) + " / 3";
                     document.getElementById("kelime").innerText = v.kelimeler[r].gizli;
-                    document.getElementById("ipucu-metin").innerText = v.kelimeler[r].i;
-                    document.getElementById("raunt-no").innerText = "Raunt: " + (r + 1) + " / 3";
-                    document.getElementById("skor").innerText = (v.p1 === id) ? `${v.p1_skor} - ${v.p2_skor}` : `${v.p2_skor} - ${v.p1_skor}`;
+                    document.getElementById("ipucu").innerText = v.kelimeler[r].i;
                 }
             });
         });
 
         function gonder() {
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
-            if(t === "") return;
-            db.ref("turnuva/maclar/" + macID).once("value", s => {
-                var v = s.val();
-                var r = v.aktifRaunt;
-                var dogru = v.kelimeler[r].k;
+            if(!t || !macID) return;
+            document.getElementById("tahmin").value = "";
 
-                db.ref("turnuva/maclar/" + macID).transaction(mac => {
-                    if(mac) {
-                        if(t === dogru) {
-                            if(mac.p1 === id) mac.p1_skor++; else mac.p2_skor++;
-                        }
-                        if(mac.aktifRaunt < 2 && mac.p1_skor < 2 && mac.p2_skor < 2) {
-                            mac.aktifRaunt++;
-                        } else {
-                            mac.durum = "bitti";
-                            mac.winner = (mac.p1_skor >= mac.p2_skor) ? mac.p1 : mac.p2;
-                        }
+            db.ref("turnuva/maclar/" + macID).transaction(mac => {
+                if(mac && mac.durum === "aktif") {
+                    var r = mac.aktifRaunt;
+                    if(t === mac.kelimeler[r].k) {
+                        if(mac.p1 === myID) mac.p1_skor++; else mac.p2_skor++;
                     }
-                    return mac;
-                });
-                document.getElementById("tahmin").value = "";
+                    if(mac.aktifRaunt < 2 && mac.p1_skor < 2 && mac.p2_skor < 2) {
+                        mac.aktifRaunt++;
+                    } else {
+                        mac.durum = "bitti";
+                        mac.winner = mac.p1_skor >= mac.p2_skor ? mac.p1 : mac.p2;
+                    }
+                }
+                return mac;
             });
         }
 
         db.ref("turnuva/maclar").on("child_changed", s => {
             if(s.key === macID && s.val().durum === "bitti") {
-                alert(s.val().winner === id ? "🏆 KAZANDIN!" : "❌ KAYBETTİN!");
+                alert(s.val().winner === myID ? "🏆 KAZANDIN!" : "❌ ELENDİN!");
                 window.location.href = "index.html";
             }
         });
