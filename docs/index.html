@@ -1,22 +1,3 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<title>Kelime Avı - Öğrenci</title>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-</head>
-
-<body>
-
-<h2>🎯 Kelime Avı</h2>
-
-<input id="ad" placeholder="Adını yaz">
-<button onclick="giris()">Giriş Yap</button>
-
-<p id="durum"></p>
-
 <script>
 
 const firebaseConfig = {
@@ -30,8 +11,9 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-
 const db = firebase.database();
+
+let ogrID = null;
 
 function giris(){
 
@@ -42,19 +24,49 @@ function giris(){
     return;
   }
 
-  let id = Date.now();
+  ogrID = Date.now().toString();
 
-  db.ref("ogrenciler/"+id).set({
+  db.ref("ogrenciler/"+ogrID).set({
     ad:ad,
     puan:0,
     onayli:false
   });
 
   document.getElementById("durum").innerText =
-  "⏳ Onay bekleniyor...";
+  "⏳ Öğretmen onayı bekleniyor...";
 }
 
-</script>
+/* ONAY VE OYUN DURUMUNU DİNLE */
 
-</body>
-</html>
+setInterval(()=>{
+
+  if(!ogrID) return;
+
+  db.ref("ogrenciler/"+ogrID).once("value").then(snap=>{
+
+    let o = snap.val();
+
+    if(!o) return;
+
+    if(o.onayli){
+
+      document.getElementById("durum").innerText =
+      "✅ Onaylandı. Oyun bekleniyor...";
+    }
+  });
+
+  db.ref("oyun").once("value").then(snap=>{
+
+    let oyun = snap.val();
+
+    if(oyun && oyun.basladi){
+
+      document.getElementById("durum").innerText =
+      "🎉 Oyun başladı!";
+
+    }
+  });
+
+},1000);
+
+</script>
