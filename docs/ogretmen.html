@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Kelime Avı - Öğretmen</title>
+<title>Öğretmen Paneli</title>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -10,47 +10,41 @@
 <style>
 body{
   font-family:Arial;
-  background:#f2f2f2;
+  background:#eee;
   padding:20px;
-}
-
-h1{
-  text-align:center;
 }
 
 .card{
   background:white;
   padding:10px;
   margin:10px;
-  border-radius:6px;
+  border-radius:5px;
 }
 
 button{
-  padding:6px 12px;
+  padding:8px;
   margin:5px;
-  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<h1>📘 Kelime Avı - Öğretmen Paneli</h1>
+<h1>📘 Öğretmen Paneli</h1>
 
 <button onclick="oyunuBaslat()">🎮 Oyunu Başlat</button>
 <button onclick="oyunuBitir()">⛔ Oyunu Bitir</button>
 
 <hr>
 
-<h3>⏳ Onay Bekleyenler</h3>
+<h3>Bekleyenler</h3>
 <div id="bekleyen"></div>
 
-<h3>✅ Oyundakiler</h3>
+<h3>Onaylananlar</h3>
 <div id="onayli"></div>
 
 <script>
 
-// Firebase Ayarları
 const firebaseConfig = {
   apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
@@ -65,40 +59,37 @@ firebase.initializeApp(firebaseConfig);
 
 const db = firebase.database();
 
-const bekleyenDiv = document.getElementById("bekleyen");
-const onayliDiv = document.getElementById("onayli");
+const bekleyen=document.getElementById("bekleyen");
+const onayli=document.getElementById("onayli");
 
 // Öğrencileri Dinle
-db.ref("ogrenciler").on("value", snap => {
+db.ref("ogrenciler").on("value", snap=>{
 
-  bekleyenDiv.innerHTML="";
-  onayliDiv.innerHTML="";
+  bekleyen.innerHTML="";
+  onayli.innerHTML="";
 
-  const data = snap.val();
+  const data=snap.val();
   if(!data) return;
 
   for(let id in data){
 
-    const o = data[id];
+    const o=data[id];
 
-    const div = document.createElement("div");
+    const div=document.createElement("div");
     div.className="card";
 
-    div.innerHTML = `
-      <b>${o.ad}</b><br>
-      Puan: ${o.puan || 0}
-    `;
+    div.innerHTML=`${o.ad} | Puan: ${o.puan || 0}`;
 
     if(o.onayli){
 
-      onayliDiv.appendChild(div);
+      onayli.appendChild(div);
 
     }else{
 
-      const btn = document.createElement("button");
+      const btn=document.createElement("button");
       btn.innerText="Onayla";
 
-      btn.onclick = ()=>{
+      btn.onclick=()=>{
 
         db.ref("ogrenciler/"+id).update({
           onayli:true
@@ -107,7 +98,7 @@ db.ref("ogrenciler").on("value", snap => {
       };
 
       div.appendChild(btn);
-      bekleyenDiv.appendChild(div);
+      bekleyen.appendChild(div);
     }
   }
 
@@ -117,11 +108,10 @@ db.ref("ogrenciler").on("value", snap => {
 function oyunuBaslat(){
 
   db.ref("oyun").set({
-    basladi:true,
-    zaman:Date.now()
+    basladi:true
   });
 
-  alert("🎉 Oyun başlatıldı!");
+  alert("Oyun başladı!");
 }
 
 // Oyunu Bitir
@@ -131,7 +121,7 @@ function oyunuBitir(){
     basladi:false
   });
 
-  alert("⛔ Oyun bitirildi!");
+  alert("Oyun durduruldu!");
 }
 
 </script>
