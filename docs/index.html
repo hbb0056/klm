@@ -11,15 +11,18 @@
         input { padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; width: 250px; margin-bottom: 15px; }
         button { padding: 12px 30px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         #durum { margin-top: 20px; font-weight: bold; color: #555; }
+        .gizle { display: none; }
     </style>
 </head>
 <body>
     <div class="login-box">
         <h2>👨‍🎓 Kelime Avı Giriş</h2>
-        <input id="ad" placeholder="Adınızı Yazın">
-        <br>
-        <button onclick="giris()">Oyuna Katıl</button>
-        <p id="durum"></p>
+        <div id="girisFormu">
+            <input id="ad" placeholder="Adınızı Yazın">
+            <br>
+            <button onclick="giris()">Oyuna Katıl</button>
+        </div>
+        <p id="durum">İisminizi yazıp katılın.</p>
     </div>
 
     <script>
@@ -38,26 +41,35 @@
         var id = localStorage.getItem("id") || db.ref("ogrenciler").push().key;
         localStorage.setItem("id", id);
 
+        // Daha önce katılmış mı kontrol et
+        db.ref("ogrenciler/"+id).once("value", s => {
+            if(s.exists()){
+                document.getElementById("girisFormu").classList.add("gizle");
+                document.getElementById("durum").innerText = "Sistemdesiniz, onay bekleniyor...";
+            }
+        });
+
         function giris(){
             var ad = document.getElementById("ad").value.trim();
             if(ad=="") return alert("İsim yazmalısın!");
             db.ref("ogrenciler/"+id).set({ ad: ad, onay: false, puan: 0 });
-            document.getElementById("durum").innerText = "⏳ Öğretmen onayı bekleniyor...";
+            document.getElementById("girisFormu").classList.add("gizle");
+            document.getElementById("durum").innerText = "⏳ Kayıt alındı. Öğretmen onayı bekleniyor...";
         }
 
-        // Onay ve Oyun Durumu Dinleyici
         db.ref("ogrenciler/"+id).on("value", function(s){
             var veri = s.val();
-            if(!veri) return;
-
+            if(!veri) {
+                // Eğer öğretmen sistemi sıfırlarsa formu tekrar aç
+                document.getElementById("girisFormu").classList.remove("gizle");
+                document.getElementById("durum").innerText = "Sistem sıfırlandı. Tekrar katılabilirsiniz.";
+                localStorage.removeItem("id");
+                return;
+            }
             if(veri.onay == true){
-                document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Öğretmen oyunu başlattığında geçiş yapılacak.</span>";
-                
-                // Onaylıysa, oyunun açılmasını bekle
+                document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Oyun bekleniyor...</span>";
                 db.ref("oyunDurum").on("value", function(d){
-                    if(d.val() == "acik"){
-                        window.location.href = "oyun.html";
-                    }
+                    if(d.val() == "acik") window.location.href = "oyun.html";
                 });
             }
         });
