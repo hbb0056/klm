@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Kelime Avı - Öğrenci</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+
+<body>
+
+<h2>🎯 Kelime Avı</h2>
+
+<input id="ad" placeholder="Adını yaz">
+<button onclick="giris()">Giriş Yap</button>
+
+<p id="durum"></p>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
+  authDomain: "kelime-avi-bec9f.firebaseapp.com",
+  projectId: "kelime-avi-bec9f",
+  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
+  messagingSenderId: "154681825331",
+  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46",
+  databaseURL:"https://kelime-avi-bec9f-default-rtdb.firebaseio.com"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+function giris(){
+
+  let ad = document.getElementById("ad").value;
+
+  if(ad==""){
+    alert("Ad yaz!");
+    return;
+  }
+
+  let id = Date.now();
+
+  db.ref("ogrenciler/"+id).set({
+    ad:ad,
+    puan:0,
+    onayli:false
+  });
+
+  document.getElementById("durum").innerText =
+  "⏳ Onay bekleniyor...";
+}
+
+</script>
+
+</body>
+</html>
