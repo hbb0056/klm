@@ -2,27 +2,26 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Kelime Avı - Giriş</title>
+    <title>Kelime Turnuvası - Giriş</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 100px; background: #f0f2f5; }
-        .login-box { background: white; padding: 40px; display: inline-block; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        input { padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; width: 250px; margin-bottom: 15px; }
-        button { padding: 12px 30px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        #durum { margin-top: 20px; font-weight: bold; color: #555; }
-        .gizle { display: none; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 80px; background: #1a1a2e; color: white; }
+        .box { background: #16213e; padding: 40px; display: inline-block; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #0f3460; }
+        input { padding: 15px; font-size: 18px; border-radius: 10px; border: none; width: 280px; margin-bottom: 20px; }
+        button { padding: 15px 40px; font-size: 18px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        #status { margin-top: 20px; color: #a2a8d3; }
     </style>
 </head>
 <body>
-    <div class="login-box">
-        <h2>👨‍🎓 Kelime Avı Giriş</h2>
-        <div id="girisFormu">
-            <input id="ad" placeholder="Adınızı Yazın">
+    <div class="box">
+        <h1>🏆 Turnuva Kaydı</h1>
+        <div id="form">
+            <input id="ad" placeholder="Adınız ve Soyadınız">
             <br>
-            <button onclick="giris()">Oyuna Katıl</button>
+            <button onclick="kaydol()">TURNUVAYA KATIL</button>
         </div>
-        <p id="durum">İisminizi yazıp katılın.</p>
+        <p id="status">İsmini yaz ve rakiplerini bekle!</p>
     </div>
 
     <script>
@@ -37,40 +36,20 @@
         };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
+        var id = localStorage.getItem("turnuva_id") || db.ref("turnuva/oyuncular").push().key;
+        localStorage.setItem("turnuva_id", id);
 
-        var id = localStorage.getItem("id") || db.ref("ogrenciler").push().key;
-        localStorage.setItem("id", id);
-
-        // Daha önce katılmış mı kontrol et
-        db.ref("ogrenciler/"+id).once("value", s => {
-            if(s.exists()){
-                document.getElementById("girisFormu").classList.add("gizle");
-                document.getElementById("durum").innerText = "Sistemdesiniz, onay bekleniyor...";
-            }
-        });
-
-        function giris(){
+        function kaydol() {
             var ad = document.getElementById("ad").value.trim();
-            if(ad=="") return alert("İsim yazmalısın!");
-            db.ref("ogrenciler/"+id).set({ ad: ad, onay: false, puan: 0 });
-            document.getElementById("girisFormu").classList.add("gizle");
-            document.getElementById("durum").innerText = "⏳ Kayıt alındı. Öğretmen onayı bekleniyor...";
+            if(!ad) return alert("İsim yazmalısın!");
+            db.ref("turnuva/oyuncular/" + id).set({ ad: ad, durum: "bekliyor", tur: 1 });
+            document.getElementById("form").style.display = "none";
+            document.getElementById("status").innerText = "⏳ Kayıt başarılı! Eşleşmeler bekleniyor...";
         }
 
-        db.ref("ogrenciler/"+id).on("value", function(s){
-            var veri = s.val();
-            if(!veri) {
-                // Eğer öğretmen sistemi sıfırlarsa formu tekrar aç
-                document.getElementById("girisFormu").classList.remove("gizle");
-                document.getElementById("durum").innerText = "Sistem sıfırlandı. Tekrar katılabilirsiniz.";
-                localStorage.removeItem("id");
-                return;
-            }
-            if(veri.onay == true){
-                document.getElementById("durum").innerHTML = "<span style='color:green'>✔️ Onaylandınız! Oyun bekleniyor...</span>";
-                db.ref("oyunDurum").on("value", function(d){
-                    if(d.val() == "acik") window.location.href = "oyun.html";
-                });
+        db.ref("turnuva/oyuncular/" + id).on("value", s => {
+            if(s.exists() && s.val().durum === "eslesti") {
+                window.location.href = "oyun.html";
             }
         });
     </script>
