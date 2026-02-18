@@ -2,57 +2,51 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Turnuva Yönetimi - Gelişmiş Havuz</title>
+    <title>Öğretmen - Turnuva Kontrol</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f7f6; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
-        input { padding: 12px; border: 2px solid #ddd; border-radius: 8px; flex: 1; outline: none; }
-        button { cursor: pointer; padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; transition: 0.3s; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .flex { display: flex; gap: 20px; }
+        .column { flex: 1; }
+        button { cursor: pointer; padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-green { background: #27ae60; color: white; }
-        .btn-red { background: #c0392b; color: white; }
-        .btn-delete { background: #ff7675; color: white; padding: 5px 12px; font-size: 12px; }
-        
-        /* Kelime Listesi Tasarımı */
-        #kelimeListesi { background: #fff; border-radius: 10px; border: 1px solid #eee; margin-top: 10px; }
-        .word-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f1f1f1; }
-        .word-item:last-child { border-bottom: none; }
-        .word-text { font-size: 1.1em; }
-        .word-text b { color: #2980b9; }
-
-        /* Maç Kartları */
-        .match-card { background: #1a1a2e; color: white; padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 5px solid #e94560; }
-        .winner { color: #2ecc71; font-weight: bold; }
-        .loser { color: #e74c3c; text-decoration: line-through; opacity: 0.7; }
+        .btn-blue { background: #3498db; color: white; }
+        .btn-red { background: #e74c3c; color: white; }
+        .alert { padding: 10px; background: #fff3cd; color: #856404; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ffeeba; }
+        .list-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .tag { padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #eee; }
     </style>
 </head>
 <body>
-    <h1>🏟️ Turnuva Yönetim Merkezi</h1>
+    <h1>🏟️ Turnuva Başhakem Paneli</h1>
 
-    <div class="card">
-        <h3>📚 Kelime Havuzu Yönetimi</h3>
-        <div class="flex-row">
-            <input id="k" placeholder="Kelime (Örn: ANKARA)"> 
-            <input id="a" placeholder="İpucu (Örn: Başkentimiz)">
-            <button class="btn-green" onclick="ekle()">HAVUZA EKLE</button>
+    <div class="flex">
+        <div class="column">
+            <div class="card">
+                <h3>👥 Oyuncu Onay Listesi</h3>
+                <div id="oyuncuListesi">Yükleniyor...</div>
+            </div>
         </div>
-        
-        <div id="kelimeListesi">
-            <p style="padding:15px; color:#888;">Henüz kelime eklenmedi.</p>
+
+        <div class="column">
+            <div class="card">
+                <h3>📚 Kelime Havuzu</h3>
+                <div id="kelimeUyari" class="alert">Yeterli kelime olup olmadığı hesaplanıyor...</div>
+                <div class="flex" style="margin-bottom:10px;">
+                    <input id="k" placeholder="Kelime" style="padding:10px; flex:1;">
+                    <input id="a" placeholder="İpucu" style="padding:10px; flex:1;">
+                    <button class="btn-green" onclick="ekle()">EKLE</button>
+                </div>
+                <div id="kelimeHavuzu" style="max-height:200px; overflow-y:auto;"></div>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <h3>⚙️ Turnuva Kontrolleri</h3>
-        <button class="btn-green" style="font-size: 1.2em; padding: 15px 30px;" onclick="eslestir()">⚔️ TUR EŞLEŞMELERİNİ BAŞLAT</button>
-        <button class="btn-red" onclick="sifirla()">🧹 SİSTEMİ SIFIRLA</button>
-    </div>
-
-    <div class="card">
-        <h3>📊 Şampiyonlar Ligi Maç Tablosu</h3>
-        <div id="macListesi">Henüz başlayan maç yok.</div>
+    <div class="card" style="text-align:center;">
+        <button class="btn-blue" style="font-size:1.3em; padding:20px 40px;" onclick="eslestir()">⚔️ TURU BAŞLAT (Her Gruba Farklı Kelimeler)</button>
+        <button class="btn-red" onclick="sifirla()">SİSTEMİ SIFIRLA</button>
     </div>
 
     <script>
@@ -68,64 +62,92 @@
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
 
-        // 1. KELİME EKLEME FONKSİYONU
+        var onayliSayisi = 0;
+        var havuzSayisi = 0;
+
+        // 1. OYUNCULARI DİNLE VE ONAY SİSTEMİ
+        db.ref("turnuva/oyuncular").on("value", s => {
+            var html = ""; onayliSayisi = 0;
+            s.forEach(o => {
+                var d = o.val();
+                if(d.durum !== "elendi") {
+                    if(d.durum === "bekliyor") onayliSayisi++;
+                    html += `<div class="list-item">
+                        <span>${d.ad} <span class="tag">${d.durum}</span></span>
+                        ${d.durum === 'onay_bekliyor' ? `<button class='btn-green' onclick="onayla('${o.key}')">Onayla</button>` : ''}
+                    </div>`;
+                }
+            });
+            document.getElementById("oyuncuListesi").innerHTML = html;
+            ihtiyacHesapla();
+        });
+
+        function onayla(id) { db.ref("turnuva/oyuncular/"+id+"/durum").set("bekliyor"); }
+
+        // 2. KELİME HAVUZU VE ANALİZ
         function ekle() {
             var k = document.getElementById("k").value.toUpperCase().trim();
             var a = document.getElementById("a").value.trim();
-            if(k && a) {
-                db.ref("turnuva/havuz").push({ k: k, a: a });
-                document.getElementById("k").value = "";
-                document.getElementById("a").value = "";
+            if(k && a) { db.ref("turnuva/havuz").push({k, a}); document.getElementById("k").value=""; document.getElementById("a").value=""; }
+        }
+
+        db.ref("turnuva/havuz").on("value", s => {
+            havuzSayisi = s.numChildren();
+            var html = "";
+            s.forEach(h => {
+                html += `<div class="list-item">${h.val().k} <button class="btn-red" style="padding:2px 5px" onclick="db.ref('turnuva/havuz/${h.key}').remove()">X</button></div>`;
+            });
+            document.getElementById("kelimeHavuzu").innerHTML = html;
+            ihtiyacHesapla();
+        });
+
+        function ihtiyacHesapla() {
+            var macSayisi = Math.floor(onayliSayisi / 2);
+            var gerekenKelime = macSayisi * 3;
+            var uyari = document.getElementById("kelimeUyari");
+            if(macSayisi === 0) {
+                uyari.innerHTML = "ℹ️ En az 2 oyuncu onaylamalısın.";
+            } else if(havuzSayisi < gerekenKelime) {
+                uyari.innerHTML = `⚠️ <b>${macSayisi} düello</b> için yetersiz kelime! <br> Gereken: ${gerekenKelime}, Mevcut: ${havuzSayisi}. Lütfen <b>${gerekenKelime - havuzSayisi}</b> tane daha ekle.`;
+                uyari.style.background = "#fff3cd";
             } else {
-                alert("Lütfen hem kelimeyi hem de ipucunu doldurun!");
+                uyari.innerHTML = `✅ <b>${macSayisi} düello</b> için her şey hazır! Her gruba farklı 3 kelime gidecek.`;
+                uyari.style.background = "#d4edda";
             }
         }
 
-        // 2. KELİME HAVUZUNU ANLIK LİSTELEME (Burası listeyi gösterir)
-        db.ref("turnuva/havuz").on("value", snapshot => {
-            var listDiv = document.getElementById("kelimeListesi");
-            var html = "";
-            if (!snapshot.exists()) {
-                html = '<p style="padding:15px; color:#888;">Havuzda kelime yok. Lütfen yukarıdan ekleyin.</p>';
-            } else {
-                snapshot.forEach(child => {
-                    var data = child.val();
-                    html += `
-                        <div class="word-item">
-                            <span class="word-text"><b>${data.k}</b> - <i>${data.a}</i></span>
-                            <button class="btn-delete" onclick="db.ref('turnuva/havuz/${child.key}').remove()">SİL</button>
-                        </div>
-                    `;
-                });
-            }
-            listDiv.innerHTML = html;
-        });
-
-        // 3. EŞLEŞTİRME MANTIĞI
+        // 3. EŞLEŞTİRME VE FARKLI KELİME DAĞITIMI
         function eslestir() {
             db.ref("turnuva").once("value", ts => {
                 var havuz = [];
                 ts.child("havuz").forEach(h => { havuz.push(h.val()); });
-                if(havuz.length < 3) return alert("Turnuva için en az 3 kelime eklemelisiniz!");
+                
+                // Havuzu karıştır
+                havuz = havuz.sort(() => 0.5 - Math.random());
 
                 var bekleyenler = [];
                 ts.child("oyuncular").forEach(o => { 
                     if(o.val().durum === "bekliyor") bekleyenler.push({id: o.key, ad: o.val().ad}); 
                 });
 
-                if(bekleyenler.length < 2) return alert("Eşleşecek yeterli oyuncu yok!");
+                if(bekleyenler.length < 2) return alert("Eşleşecek oyuncu yok!");
+                if(havuz.length < (Math.floor(bekleyenler.length/2) * 3)) return alert("Kelime havuzu yetersiz!");
 
+                var kelimeIndex = 0;
                 for(let i=0; i < bekleyenler.length; i+=2) {
                     if(bekleyenler[i+1]) {
                         var p1 = bekleyenler[i], p2 = bekleyenler[i+1];
-                        var secilenler = havuz.sort(() => 0.5 - Math.random()).slice(0,3).map(x => ({
+                        
+                        // Bu maç için sıradaki 3 kelimeyi al
+                        var macKelimeleri = havuz.slice(kelimeIndex, kelimeIndex + 3).map(x => ({
                             k: x.k, i: x.a, gizli: x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")
                         }));
+                        kelimeIndex += 3;
 
                         var mid = db.ref("turnuva/maclar").push().key;
                         db.ref("turnuva/maclar/"+mid).set({
                             p1: p1.id, p2: p2.id, p1_ad: p1.ad, p2_ad: p2.ad,
-                            kelimeler: secilenler, aktifRaunt: 0, p1_skor: 0, p2_skor: 0, durum: "aktif", winner: ""
+                            kelimeler: macKelimeleri, aktifRaunt: 0, p1_skor: 0, p2_skor: 0, durum: "aktif", winner: ""
                         });
                         db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
                         db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
@@ -134,44 +156,7 @@
             });
         }
 
-        // 4. MAÇLARI VE GRUPLARI İZLEME
-        db.ref("turnuva").on("value", s => {
-            var mList = document.getElementById("macListesi");
-            var html = "";
-            var maclar = s.child("maclar");
-
-            if (!maclar.exists()) {
-                html = "Aktif düello bulunmuyor.";
-            } else {
-                maclar.forEach(m => {
-                    var v = m.val();
-                    var durumText = v.durum === "aktif" ? "🔥 CANLI" : "🏁 BİTTİ";
-                    html += `
-                        <div class="match-card">
-                            <small>${durumText} - Raunt: ${v.aktifRaunt + 1}</small><br>
-                            <span class="${v.winner === v.p1 ? 'winner' : (v.durum==='bitti'?'loser':'')}">${v.p1_ad} (${v.p1_skor})</span> 
-                            vs 
-                            <span class="${v.winner === v.p2 ? 'winner' : (v.durum==='bitti'?'loser':'')}">${v.p2_ad} (${v.p2_skor})</span>
-                        </div>
-                    `;
-
-                    // Otomatik Tur Atlama Kontrolü
-                    if(v.durum === "bitti" && v.winner !== "") {
-                        db.ref("turnuva/oyuncular/"+v.winner+"/durum").set("bekliyor");
-                        var loser = v.winner === v.p1 ? v.p2 : v.p1;
-                        db.ref("turnuva/oyuncular/"+loser+"/durum").set("elendi");
-                    }
-                });
-            }
-            mList.innerHTML = html;
-        });
-
-        function sifirla() {
-            if(confirm("Tüm turnuva verileri silinecek!")) {
-                db.ref("turnuva").remove();
-                location.reload();
-            }
-        }
+        function sifirla() { if(confirm("Sıfırlansın mı?")) db.ref("turnuva").remove(); location.reload(); }
     </script>
 </body>
 </html>
