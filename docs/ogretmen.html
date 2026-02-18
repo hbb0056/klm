@@ -8,6 +8,10 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <style>
+body{
+  font-family:Arial;
+}
+
 button{
   margin:3px;
 }
@@ -18,14 +22,14 @@ button{
 
 <h2>👩‍🏫 Öğretmen Paneli</h2>
 
-<!-- ÖĞRENCİ ONAY -->
+<!-- ÖĞRENCİLER -->
 
-<h3>👨‍🎓 Öğrenciler</h3>
-<div id="ogrenciListe"></div>
+<h3>👨‍🎓 Öğrenci Listesi</h3>
+<div id="ogrenciler"></div>
 
 <hr>
 
-<!-- HAVUZ EKLE -->
+<!-- KELİME EKLE -->
 
 <h3>➕ Kelime Ekle</h3>
 
@@ -39,7 +43,7 @@ button{
 <!-- HAVUZ -->
 
 <h3>📚 Kelime Havuzu</h3>
-<div id="liste"></div>
+<div id="kelimeler"></div>
 
 
 <script>
@@ -58,34 +62,63 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 
-/* ÖĞRENCİLER */
+/* =======================
+   ÖĞRENCİLER + SIRALAMA
+======================= */
 
 db.ref("ogrenciler").on("value",function(s){
 
-  var html="";
+  var liste=[];
 
   s.forEach(function(e){
 
     var d=e.val();
-
-    html+=`
-    ${d.ad} (${d.onay?"✔️":"⏳"})
-
-    <button onclick="onayla('${e.key}')">Onayla</button>
-    <br>
-    `;
+    liste.push(d);
   });
 
-  document.getElementById("ogrenciListe").innerHTML=html;
+  // PUANA GÖRE SIRALA
+  liste.sort(function(a,b){
+    return (b.puan||0)-(a.puan||0);
+  });
+
+  var html="";
+
+  for(var i=0;i<liste.length;i++){
+
+    var o=liste[i];
+
+    html+=`
+    ${i+1}. ${o.ad}
+    | Puan: ${o.puan||0}
+    | ${o.onay?"✔️":"⏳"}
+
+    <button onclick="onayla('${o.ad}')">Onayla</button>
+    <br>
+    `;
+  }
+
+  document.getElementById("ogrenciler").innerHTML=html;
 });
 
-function onayla(id){
 
-  db.ref("ogrenciler/"+id+"/onay").set(true);
+function onayla(ad){
+
+  db.ref("ogrenciler").once("value",function(s){
+
+    s.forEach(function(e){
+
+      if(e.val().ad==ad){
+
+        db.ref("ogrenciler/"+e.key+"/onay").set(true);
+      }
+    });
+  });
 }
 
 
-/* KELİME EKLE */
+/* =======================
+   KELİME EKLE
+======================= */
 
 function ekle(){
 
@@ -104,7 +137,9 @@ function ekle(){
 }
 
 
-/* HAVUZ */
+/* =======================
+   HAVUZ
+======================= */
 
 db.ref("kelimeler").on("value",function(s){
 
@@ -125,25 +160,29 @@ db.ref("kelimeler").on("value",function(s){
     `;
   });
 
-  document.getElementById("liste").innerHTML=html;
+  document.getElementById("kelimeler").innerHTML=html;
 });
 
 
-/* SİL */
-
 function sil(id){
 
-  db.ref("kelimeler/"+id).remove();
+  if(confirm("Silinsin mi?")){
+    db.ref("kelimeler/"+id).remove();
+  }
 }
 
 
-/* BAŞLAT */
+/* =======================
+   OYUN BAŞLAT
+======================= */
 
 function baslat(id){
 
   db.ref("kelimeler/"+id).once("value",function(s){
 
     var d=s.val();
+
+    if(!d) return;
 
     var gizli="";
 
@@ -157,7 +196,7 @@ function baslat(id){
       anlam:d.anlam
     });
 
-    alert("Oyun başladı!");
+    alert("🎮 Oyun Başladı!");
   });
 }
 
