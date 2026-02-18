@@ -6,22 +6,22 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 80px; background: #1a1a2e; color: white; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 100px; background: #1a1a2e; color: white; }
         .box { background: #16213e; padding: 40px; display: inline-block; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #0f3460; }
         input { padding: 15px; font-size: 18px; border-radius: 10px; border: none; width: 280px; margin-bottom: 20px; outline: none; }
         button { padding: 15px 40px; font-size: 18px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #status { margin-top: 20px; color: #a2a8d3; font-style: italic; }
+        #status { margin-top: 20px; color: #a2a8d3; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h1>🏆 Turnuva Kaydı</h1>
+        <h1>🏆 Kelime Turnuvası</h1>
         <div id="form">
             <input id="ad" placeholder="Adınız ve Soyadınız">
             <br>
-            <button onclick="kaydol()">TURNUVAYA KATIL</button>
+            <button onclick="kaydol()">KATIL</button>
         </div>
-        <p id="status">Lütfen isminizi yazın.</p>
+        <p id="status">Lütfen isminizi yazıp bekleyin.</p>
     </div>
 
     <script>
@@ -44,13 +44,13 @@
             if(!ad) return alert("İsim yazmalısın!");
             db.ref("turnuva/oyuncular/" + id).set({ ad: ad, durum: "onay_bekliyor" });
             document.getElementById("form").style.display = "none";
-            document.getElementById("status").innerText = "⏳ Kayıt alındı. Öğretmenin onaylaması bekleniyor...";
+            document.getElementById("status").innerText = "⏳ Kayıt başarılı. Öğretmen onayı bekleniyor...";
         }
 
         db.ref("turnuva/oyuncular/" + id).on("value", s => {
             if(s.exists()){
                 var d = s.val().durum;
-                if(d === "bekliyor") document.getElementById("status").innerText = "✔️ Onaylandınız! Turnuva ağacı hazırlanıyor...";
+                if(d === "bekliyor") document.getElementById("status").innerText = "✔️ Onaylandınız! Rakip bekleniyor...";
                 if(d === "eslesti") window.location.href = "oyun.html";
             }
         });
