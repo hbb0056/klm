@@ -6,26 +6,27 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #0f3460; color: white; padding-top: 30px; }
-        .arena { background: #16213e; padding: 30px; display: inline-block; border-radius: 20px; width: 90%; max-width: 600px; border: 2px solid #e94560; }
-        .skor-board { font-size: 24px; font-weight: bold; background: #1a1a2e; padding: 10px; border-radius: 10px; margin-bottom: 20px; color: #f1c40f; }
-        #kelime { font-size: 45px; letter-spacing: 10px; font-family: monospace; margin: 20px 0; background: #1a1a2e; padding: 20px; border-radius: 10px; color: #00d2ff; }
-        input { padding: 15px; font-size: 20px; width: 80%; border-radius: 10px; border: none; margin-bottom: 10px; text-align: center; outline: none; }
-        button { padding: 15px 40px; font-size: 20px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #mesaj { font-size: 18px; margin-top: 15px; color: #a2a8d3; }
-        .raunt-bilgi { font-size: 16px; color: #e94560; margin-bottom: 5px; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; padding-top: 30px; }
+        .arena { background: #16213e; padding: 30px; display: inline-block; border-radius: 20px; width: 90%; max-width: 600px; border: 2px solid #e94560; box-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
+        .skor-board { font-size: 28px; font-weight: bold; background: #1a1a2e; padding: 15px; border-radius: 10px; margin-bottom: 20px; color: #f1c40f; border: 1px solid #333; }
+        #kelime { font-size: 45px; letter-spacing: 10px; font-family: 'Courier New', monospace; margin: 20px 0; background: #1a1a2e; padding: 20px; border-radius: 10px; color: #00d2ff; }
+        input { padding: 15px; font-size: 20px; width: 80%; border-radius: 10px; border: none; margin-bottom: 10px; text-align: center; outline: none; background: #eef2f3; color: #333; }
+        button { padding: 15px 40px; font-size: 20px; background: #e94560; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #ff4d6d; transform: scale(1.05); }
+        button:disabled { background: #555; cursor: not-allowed; }
+        #mesaj { font-size: 18px; margin-top: 15px; color: #a2a8d3; min-height: 25px; }
     </style>
 </head>
 <body>
     <div class="arena">
-        <div class="raunt-bilgi" id="raunt-no">Raunt: 1 / 3</div>
+        <div id="raunt-no" style="color:#e94560; font-weight:bold; margin-bottom:5px;">Raunt: 1 / 3</div>
         <div class="skor-board" id="skor">SİZ 0 - 0 RAKİP</div>
         <p>İpucu: <span id="ipucu" style="color:#f1c40f">...</span></p>
         <div id="kelime">-----</div>
-        <input id="tahmin" placeholder="Cevabı yazın..." autofocus>
+        <input id="tahmin" placeholder="Cevabınızı buraya yazın..." autofocus onkeypress="if(event.key === 'Enter') gonder()">
         <br>
-        <button id="btn" onclick="gonder()">GÖNDER</button>
-        <p id="mesaj">3 kelimeden 2'sini bilen kazanır!</p>
+        <button id="btn" onclick="gonder()">CEVABI GÖNDER</button>
+        <p id="mesaj">Hızlı ve doğru olan puanı kapar!</p>
     </div>
 
     <script>
@@ -50,47 +51,54 @@
                 if((v.p1 === id || v.p2 === id) && v.durum === "aktif") {
                     macID = m.key;
                     var r = v.aktifRaunt;
-                    var kVeri = v.kelimeler[r];
-                    dogruCevap = kVeri.k;
-                    document.getElementById("kelime").innerText = kVeri.gizli;
-                    document.getElementById("ipucu").innerText = kVeri.i;
+                    if(!v.kelimeler[r]) return;
+
+                    dogruCevap = v.kelimeler[r].k;
+                    document.getElementById("kelime").innerText = v.kelimeler[r].gizli;
+                    document.getElementById("ipucu").innerText = v.kelimeler[r].i;
                     document.getElementById("raunt-no").innerText = "Raunt: " + (r + 1) + " / 3";
                     
-                    var skor1 = v.p1_skor || 0;
-                    var skor2 = v.p2_skor || 0;
-                    if(v.p1 === id) document.getElementById("skor").innerText = "SİZ " + skor1 + " - " + skor2 + " RAKİP";
-                    else document.getElementById("skor").innerText = "SİZ " + skor2 + " - " + skor1 + " RAKİP";
+                    var s1 = v.p1_skor || 0;
+                    var s2 = v.p2_skor || 0;
+                    document.getElementById("skor").innerText = (v.p1 === id) ? `SİZ ${s1} - ${s2} RAKİP` : `SİZ ${s2} - ${s1} RAKİP`;
+                    document.getElementById("btn").disabled = false;
+                    document.getElementById("mesaj").innerText = "Cevap bekleniyor...";
                 }
             });
         });
 
         function gonder() {
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
-            if(t === dogruCevap) {
-                document.getElementById("tahmin").value = "";
-                db.ref("turnuva/maclar/" + macID).transaction(mac => {
-                    if(mac) {
-                        var r = mac.aktifRaunt;
+            if(t === "") return;
+            
+            document.getElementById("btn").disabled = true;
+            document.getElementById("tahmin").value = "";
+
+            db.ref("turnuva/maclar/" + macID).transaction(mac => {
+                if(mac && mac.durum === "aktif") {
+                    var r = mac.aktifRaunt;
+                    // Eğer cevap doğruysa puanı yaz
+                    if(t === mac.kelimeler[r].k) {
                         if(mac.p1 === id) mac.p1_skor = (mac.p1_skor || 0) + 1;
                         else mac.p2_skor = (mac.p2_skor || 0) + 1;
-
-                        if(r < 2 && mac.p1_skor < 2 && mac.p2_skor < 2) {
-                            mac.aktifRaunt = r + 1;
-                        } else {
-                            mac.durum = "bitti";
-                            mac.winner = (mac.p1_skor > mac.p2_skor) ? mac.p1 : mac.p2;
-                        }
                     }
-                    return mac;
-                });
-            } else {
-                alert("Hatalı tahmin!");
-            }
+
+                    // Yanlış da olsa doğru da olsa bir sonraki kelimeye geç
+                    if(mac.aktifRaunt < 2 && mac.p1_skor < 2 && mac.p2_skor < 2) {
+                        mac.aktifRaunt++;
+                    } else {
+                        mac.durum = "bitti";
+                        mac.winner = (mac.p1_skor >= mac.p2_skor) ? mac.p1 : mac.p2;
+                    }
+                }
+                return mac;
+            });
         }
 
         db.ref("turnuva/maclar").on("child_changed", s => {
             if(s.key === macID && s.val().durum === "bitti") {
-                alert(s.val().winner === id ? "🏆 TEBRİKLER! Maçı kazandınız." : "❌ ELENDİNİZ! Maçı rakibiniz kazandı.");
+                var w = s.val().winner;
+                alert(w === id ? "🏆 TEBRİKLER! Bir üst tura yükseldin!" : "❌ Elendin! Bir sonraki turnuvada başarılar.");
                 window.location.href = "index.html";
             }
         });
