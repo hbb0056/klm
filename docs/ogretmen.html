@@ -6,25 +6,27 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .flex { display: flex; gap: 20px; }
         .col { flex: 1; }
-        button { cursor: pointer; padding: 10px; border-radius: 6px; border: none; font-weight: bold; }
+        button { cursor: pointer; padding: 10px; border-radius: 6px; border: none; font-weight: bold; transition: 0.2s; }
         .btn-green { background: #27ae60; color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
-        .list-box { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
+        .list-box { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; background: #fafafa; }
         .item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        h4 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .tag { padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; color: white; }
     </style>
 </head>
 <body>
-    <h1>🏟️ Turnuva Başhakem Paneli</h1>
+    <h1>🏟️ Turnuva Yönetim Merkezi</h1>
 
     <div class="flex">
         <div class="col">
             <div class="card">
-                <h3>👥 Oyuncu Yönetimi</h3>
+                <h3>👥 Oyuncu Durumları</h3>
                 <div id="oyuncuListesi" class="list-box"></div>
             </div>
         </div>
@@ -32,10 +34,10 @@
         <div class="col">
             <div class="card">
                 <h3>📚 Kelime Havuzu</h3>
-                <div id="ihtiyac" style="background:#fff3cd; padding:5px; margin-bottom:5px;">En az 2 onaylı oyuncu lazım.</div>
+                <div id="ihtiyac" style="padding:10px; margin-bottom:10px; border-radius:8px; font-weight:bold;">Hesaplanıyor...</div>
                 <div class="flex">
-                    <input id="k" placeholder="Kelime" style="flex:1; padding:10px;">
-                    <input id="a" placeholder="İpucu" style="flex:1; padding:10px;">
+                    <input id="k" placeholder="Kelime" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                    <input id="a" placeholder="İpucu" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
                     <button class="btn-green" onclick="ekle()">EKLE</button>
                 </div>
                 <div id="kelimeHavuzu" class="list-box"></div>
@@ -44,15 +46,15 @@
     </div>
 
     <div class="card">
-        <h3>⚙️ Ayarlar ve Başlat</h3>
-        <label>Harf Açılma Hızı (sn): </label>
-        <input type="number" id="sn" value="10" style="width:50px; padding:5px;">
-        <button class="btn-blue" style="font-size:1.2em;" onclick="baslat()">⚔️ TURNUVAYI BAŞLAT</button>
-        <button class="btn-red" onclick="sifirla()">SİSTEMİ SIFIRLA</button>
+        <h3>⚙️ Turnuva Kontrolleri</h3>
+        <label>Harf İpucu Hızı (Saniye): </label>
+        <input type="number" id="sn" value="10" style="width:60px; padding:8px; border:1px solid #ddd; border-radius:5px;">
+        <button class="btn-blue" style="font-size:1.2em; padding:10px 30px;" onclick="baslat()">⚔️ TURU BAŞLAT</button>
+        <button class="btn-red" onclick="sifirla()">🧹 SİSTEMİ SIFIRLA</button>
     </div>
 
     <div class="card">
-        <h3>📊 Canlı Maçlar</h3>
+        <h3>📊 Canlı & Biten Maçlar</h3>
         <div id="macListesi"></div>
     </div>
 
@@ -70,7 +72,6 @@
         var db = firebase.database();
         var hInterval;
 
-        // KELİME HAVUZU İŞLEMLERİ
         function ekle() {
             var k = document.getElementById("k").value.toUpperCase().trim();
             var a = document.getElementById("a").value.trim();
@@ -79,73 +80,85 @@
         }
 
         db.ref("turnuva/havuz").on("value", s => {
-            var html = "";
-            window.havuzSayisi = s.numChildren();
+            var html = ""; window.havuzSayisi = s.numChildren();
             s.forEach(h => {
-                html += `<div class="item"><b>${h.val().k}</b> <button class="btn-red" onclick="db.ref('turnuva/havuz/${h.key}').remove()">SİL</button></div>`;
+                html += `<div class="item"><span><b>${h.val().k}</b> - ${h.val().a}</span> <button class="btn-red" style="padding:4px" onclick="db.ref('turnuva/havuz/${h.key}').remove()">X</button></div>`;
             });
-            document.getElementById("kelimeHavuzu").innerHTML = html;
+            document.getElementById("kelimeHavuzu").innerHTML = html || "Havuz boş.";
             ihtiyacHesapla();
         });
 
-        // OYUNCU ONAY SİSTEMİ
         db.ref("turnuva/oyuncular").on("value", s => {
-            var html = ""; window.onayli = 0;
+            var onayHtml = "<h4>⏳ Onay Bekleyenler</h4>";
+            var ustHtml = "<h4>🚀 Üst Grup (Kazananlar/Aktif)</h4>";
+            var altHtml = "<h4>💀 Alt Grup (Elenenler)</h4>";
+            window.onayliCount = 0;
+
             s.forEach(o => {
                 var d = o.val();
-                if(d.durum === "bekliyor") window.onayli++;
-                html += `<div class="item"><span>${d.ad} [${d.durum}]</span> 
-                ${d.durum==='onay_bekliyor'?`<button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">ONAYLA</button>`:''}</div>`;
+                var item = `<div class="item"><span>${d.ad}</span>`;
+                if(d.durum === "onay_bekliyor") {
+                    onayHtml += item + `<button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">ONAYLA</button></div>`;
+                } else if(d.durum === "bekliyor" || d.durum === "eslesti") {
+                    window.onayliCount++;
+                    ustHtml += item + `<span class="tag" style="background:#2ecc71">AKTİF</span></div>`;
+                } else if(d.durum === "elendi") {
+                    altHtml += item + `<span class="tag" style="background:#e74c3c">ELENDİ</span></div>`;
+                }
             });
-            document.getElementById("oyuncuListesi").innerHTML = html;
+            document.getElementById("oyuncuListesi").innerHTML = onayHtml + ustHtml + altHtml;
             ihtiyacHesapla();
         });
 
         function ihtiyacHesapla() {
-            var ger = Math.floor(window.onayli / 2) * 3;
-            document.getElementById("ihtiyac").innerText = `Onaylı: ${window.onayli} | Gereken Kelime: ${ger} | Mevcut: ${window.havuzSayisi}`;
+            var ger = Math.floor(window.onayliCount / 2) * 3;
+            var box = document.getElementById("ihtiyac");
+            if(window.havuzSayisi < ger) {
+                box.innerText = `⚠️ Kelime Eksik! Lazım: ${ger}, Mevcut: ${window.havuzSayisi}`;
+                box.style.background = "#fff3cd";
+            } else {
+                box.innerText = `✅ Hazır! ${window.onayliCount} oyuncu için ${window.havuzSayisi} kelime yeterli.`;
+                box.style.background = "#d4edda";
+            }
         }
 
-        // TURNUVA BAŞLATMA (HER GRUBA FARKLI KELİME)
         function baslat() {
             db.ref("turnuva").once("value", ts => {
                 var havuz = []; ts.child("havuz").forEach(h => { havuz.push(h.val()); });
                 havuz = havuz.sort(() => 0.5 - Math.random());
                 var bekleyenler = []; ts.child("oyuncular").forEach(o => { if(o.val().durum === "bekliyor") bekleyenler.push({id:o.key, ad:o.val().ad}); });
 
-                if(bekleyenler.length < 2) return alert("Onaylanmış oyuncu yetersiz!");
-                if(havuz.length < Math.floor(bekleyenler.length/2)*3) return alert("Kelime yetersiz!");
+                if(bekleyenler.length < 2) return alert("Eşleşecek yeterli oyuncu yok!");
+                if(havuz.length < Math.floor(bekleyenler.length/2)*3) return alert("Havuzdaki kelime sayısı yetersiz!");
 
                 var kIdx = 0;
                 for(let i=0; i<bekleyenler.length; i+=2) {
                     if(bekleyenler[i+1]) {
                         var p1 = bekleyenler[i], p2 = bekleyenler[i+1];
-                        var macKelimeler = havuz.slice(kIdx, kIdx+3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
+                        var mKelimeler = havuz.slice(kIdx, kIdx+3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
                         kIdx += 3;
                         db.ref("turnuva/maclar").push().set({
                             p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad,
-                            kelimeler:macKelimeler, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:""
+                            kelimeler:mKelimeler, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:""
                         });
                         db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
                         db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
                     }
                 }
-                harfMotorunuCalistir();
+                harfMotorunuBaslat();
             });
         }
 
-        // HARF İPUCU MOTORU
-        function harfMotorunuCalistir() {
+        function harfMotorunuBaslat() {
             if(hInterval) clearInterval(hInterval);
-            var saniye = document.getElementById("sn").value || 10;
+            var sn = document.getElementById("sn").value || 10;
             hInterval = setInterval(() => {
                 db.ref("turnuva/maclar").once("value", s => {
                     s.forEach(ms => {
                         var m = ms.val();
                         if(m.durum === "aktif") {
                             var r = m.aktifRaunt;
-                            var g = m.kelimeler[r].gizli;
-                            var k = m.kelimeler[r].k;
+                            var g = m.kelimeler[r].gizli, k = m.kelimeler[r].k;
                             var tireler = [];
                             for(let i=0; i<g.length; i++) if(g[i]==="-") tireler.push(i);
                             if(tireler.length > 1) {
@@ -156,24 +169,20 @@
                         }
                     });
                 });
-            }, saniye * 1000);
+            }, sn * 1000);
         }
 
         db.ref("turnuva/maclar").on("value", s => {
-            var html = "";
+            var aktifH = "<h4>🔥 Devam Edenler</h4>", bitenH = "<h4>🏁 Sonuçlar</h4>";
             s.forEach(m => {
                 var v = m.val();
-                html += `<div class="item">${v.p1_ad} vs ${v.p2_ad} [${v.durum}]</div>`;
-                if(v.durum === "bitti" && v.winner !== "") {
-                    db.ref("turnuva/oyuncular/"+v.winner+"/durum").set("bekliyor");
-                    var loser = v.winner === v.p1 ? v.p2 : v.p1;
-                    db.ref("turnuva/oyuncular/"+loser+"/durum").set("elendi");
-                }
+                if(v.durum === "aktif") aktifH += `<div class="item">${v.p1_ad} vs ${v.p2_ad} [R:${v.aktifRaunt+1}]</div>`;
+                else bitenH += `<div class="item">🏆 ${v.winner===v.p1?v.p1_ad:v.p2_ad} kazandı (${v.p1_skor}-${v.p2_skor})</div>`;
             });
-            document.getElementById("macListesi").innerHTML = html;
+            document.getElementById("macListesi").innerHTML = aktifH + bitenH;
         });
 
-        function sifirla() { if(confirm("Her şey silinsin mi?")) { db.ref("turnuva").remove(); location.reload(); } }
+        function sifirla() { if(confirm("Tüm turnuva ve oyuncular silinsin mi?")) { db.ref("turnuva").remove(); location.reload(); } }
     </script>
 </body>
 </html>
