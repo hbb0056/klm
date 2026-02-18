@@ -1,107 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>Kelime Avı</title>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<style>
-body{
-  text-align:center;
-  font-family:Arial;
-}
-
-#kelime{
-  font-size:40px;
-  letter-spacing:8px;
-}
-
-input{
-  font-size:18px;
-  padding:5px;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Kelime Avı - Canlı Oyun</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #eef2f3; }
+        #kelime { font-size: 50px; letter-spacing: 15px; margin: 20px; font-family: monospace; color: #2c3e50; }
+        .stats { font-size: 20px; color: #e67e22; font-weight: bold; }
+        input { padding: 15px; font-size: 20px; width: 60%; border-radius: 5px; border: 2px solid #3498db; }
+        button { padding: 15px 30px; font-size: 20px; background: #3498db; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        #mesaj { margin-top: 20px; font-size: 1.2em; }
+    </style>
 </head>
-
 <body>
+    <h1>🎯 Kelime Avı</h1>
+    <div class="stats">Kazanılacak Puan: <span id="canliPuan">100</span></div>
+    <p><strong>İpucu:</strong> <span id="anlam">Yükleniyor...</span></p>
+    <h2 id="kelime">-----</h2>
+    
+    <input id="tahmin" placeholder="Tahmininizi yazın..." onkeypress="if(event.key=='Enter') gonder()">
+    <button onclick="gonder()">Gönder</button>
+    <p id="mesaj"></p>
 
-<h1>🎯 Kelime Avı</h1>
+    <script>
+        var firebaseConfig = {
+            apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
+            authDomain: "kelime-avi-bec9f.firebaseapp.com",
+            databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
+            projectId: "kelime-avi-bec9f",
+            storageBucket: "kelime-avi-bec9f.appspot.com",
+            messagingSenderId: "154681825331",
+            appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
+        };
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.database();
+        
+        var ogrenciID = localStorage.getItem("id");
+        var dogruKelime = "";
+        var guncelPuan = 0;
+        var bildiMi = false;
 
-<h3>Anlam:</h3>
-<p id="anlam">Bekleniyor...</p>
+        db.ref("aktif").on("value", function(s){
+            var d = s.val();
+            if(!d) return;
 
-<h2 id="kelime">-----</h2>
+            // Eğer yeni bir kelimeye geçildiyse "bildiMi" durumunu sıfırla
+            if(dogruKelime !== d.kelime) {
+                dogruKelime = d.kelime;
+                bildiMi = false;
+                document.getElementById("mesaj").innerText = "";
+                document.getElementById("tahmin").disabled = false;
+            }
 
-<br>
+            guncelPuan = d.puan;
+            document.getElementById("anlam").innerText = d.anlam;
+            document.getElementById("kelime").innerText = d.gizli;
+            document.getElementById("canliPuan").innerText = guncelPuan;
+        });
 
-<input id="tahmin" placeholder="Tahminini yaz">
-<button onclick="gonder()">Gönder</button>
-
-<p id="mesaj"></p>
-
-<script>
-
-var firebaseConfig = {
-  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
-  authDomain: "kelime-avi-bec9f.firebaseapp.com",
-  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-  projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.appspot.com",
-  messagingSenderId: "154681825331",
-  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
-
-var kelime = "";
-var ogrenciID = localStorage.getItem("id");
-
-
-/* AKTİF KELİME */
-db.ref("aktif").on("value",function(s){
-
-  var d = s.val();
-
-  if(!d) return;
-
-  kelime = d.kelime;
-
-  document.getElementById("anlam").innerText = d.anlam;
-  document.getElementById("kelime").innerText = d.gizli;
-
-  document.getElementById("mesaj").innerText="";
-  document.getElementById("tahmin").value="";
-});
-
-
-/* TAHMİN */
-function gonder(){
-
-  var t = document.getElementById("tahmin").value.toUpperCase();
-
-  if(t=="") return;
-
-  if(t == kelime){
-
-    db.ref("ogrenciler/"+ogrenciID+"/puan")
-    .transaction(function(p){
-      return (p||0)+10;
-    });
-
-    document.getElementById("mesaj").innerText="✅ Doğru! +10 puan";
-
-  }else{
-
-    document.getElementById("mesaj").innerText="❌ Yanlış";
-  }
-
-  document.getElementById("tahmin").value="";
-}
-
-</script>
-
+        function gonder(){
+            if(bildiMi) return;
+            var t = document.getElementById("tahmin").value.toUpperCase().trim();
+            if(t == dogruKelime){
+                bildiMi = true;
+                db.ref("ogrenciler/"+ogrenciID+"/puan").transaction(p => (p||0) + guncelPuan);
+                document.getElementById("mesaj").innerHTML = "<b style='color:green'>✅ TEBRİKLER! +"+guncelPuan+" Puan</b>";
+                document.getElementById("tahmin").disabled = true;
+            } else {
+                document.getElementById("mesaj").innerHTML = "<b style='color:red'>❌ Yanlış, tekrar dene!</b>";
+            }
+            document.getElementById("tahmin").value = "";
+        }
+    </script>
 </body>
 </html>
