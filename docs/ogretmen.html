@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Öğretmen Paneli</title>
+<title>Öğretmen</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -12,18 +12,11 @@
 
 <h2>👩‍🏫 Öğretmen Paneli</h2>
 
-<h3>➕ Kelime Ekle</h3>
-
-<input id="kelime" placeholder="Kelime"><br><br>
-<input id="anlam" placeholder="Anlam"><br><br>
-
-<button onclick="ekle()">Ekle</button>
-
-<hr>
-
-<h3>📚 Kelime Havuzu</h3>
+<h3>Bekleyen Öğrenciler</h3>
 
 <div id="liste"></div>
+
+<button onclick="baslat()">🎮 Oyunu Başlat</button>
 
 <script>
 
@@ -40,29 +33,9 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-/* EKLE */
-function ekle(){
-
-  var k=document.getElementById("kelime").value.toUpperCase();
-  var a=document.getElementById("anlam").value;
-
-  if(k==""||a==""){
-    alert("Boş bırakma");
-    return;
-  }
-
-  db.ref("kelimeler").push({
-    kelime:k,
-    anlam:a
-  });
-
-  document.getElementById("kelime").value="";
-  document.getElementById("anlam").value="";
-}
-
 
 /* LİSTE */
-db.ref("kelimeler").on("value",function(s){
+db.ref("ogrenciler").on("value",function(s){
 
   var html="";
 
@@ -71,13 +44,15 @@ db.ref("kelimeler").on("value",function(s){
     var d=e.val();
 
     html+=`
-    <div style="margin:5px">
-      <b>${d.kelime}</b> : ${d.anlam}
+    ${d.ad}
 
-      <button onclick="baslat('${e.key}')">▶ Başlat</button>
+    (${d.onay?"Onaylı":"Bekliyor"})
 
-      <button onclick="sil('${e.key}')">❌ Sil</button>
-    </div>
+    <button onclick="onayla('${e.key}')">
+    ✔️
+    </button>
+
+    <br>
     `;
   });
 
@@ -85,40 +60,19 @@ db.ref("kelimeler").on("value",function(s){
 });
 
 
-/* SİL */
-function sil(id){
+/* ONAY */
+function onayla(id){
 
-  if(confirm("Silinsin mi?")){
-
-    db.ref("kelimeler/"+id).remove();
-  }
+  db.ref("ogrenciler/"+id+"/onay").set(true);
 }
 
 
 /* BAŞLAT */
-function baslat(id){
+function baslat(){
 
-  db.ref("kelimeler/"+id).once("value",function(s){
+  db.ref("oyunDurum").set("basladi");
 
-    var d=s.val();
-
-    if(!d) return;
-
-    var gizli="";
-
-    for(var i=0;i<d.kelime.length;i++){
-      gizli+="-";
-    }
-
-    db.ref("aktif").set({
-      kelime:d.kelime,
-      gizli:gizli,
-      anlam:d.anlam,
-      zaman:Date.now()
-    });
-
-    alert("Oyun başlatıldı!");
-  });
+  alert("Oyun başladı");
 }
 
 </script>
