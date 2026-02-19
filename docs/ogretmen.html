@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Merkezi</title>
+    <title>Gelişmiş Yönetim Merkezi</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -14,11 +14,12 @@
         .btn-green { background: #27ae60; color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
-        .nav-bar { background: #16213e; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-radius: 0 0 15px 15px; }
-        .list-box { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; background: #fafafa; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        .ana-ozel { display: none; } /* Varsayılan gizli, JS ile açılacak */
+        .nav-bar { background: #16213e; color: white; padding: 15px; display: flex; justify-content: space-between; border-radius: 0 0 15px 15px; }
+        .list-box { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .mode-selector { background: #ebf3ff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 2px dashed #3498db; }
+        input[type="number"] { width: 50px; padding: 5px; }
+        .ana-ozel { display: none; }
     </style>
 </head>
 <body>
@@ -28,11 +29,22 @@
     </script>
 
     <div class="nav-bar">
-        <div id="rol-etiket" style="font-weight: bold; letter-spacing: 1px;"></div>
-        <div style="display: flex; gap: 10px;">
-            <button class="ana-ozel btn-blue" onclick="alert('Şifre değiştirme paneli yakında...')">Şifre Değiştir</button>
-            <button class="btn-red" onclick="sessionStorage.clear(); window.location.href='login.html';">Güvenli Çıkış</button>
-        </div>
+        <div id="rol-etiket"></div>
+        <button class="btn-red" onclick="sessionStorage.clear(); window.location.href='login.html';">Çıkış</button>
+    </div>
+
+    <div class="mode-selector">
+        <strong>🎮 OYUN MODU SEÇİN:</strong>
+        <select id="gameMode" onchange="modDegisti()">
+            <option value="duello">Klasik Düello (Teke Tek Elenme)</option>
+            <option value="grup">Grup Aşaması (En İyi 2 Üst Tura çıkar)</option>
+        </select>
+        <span id="grupAyari" style="display:none; margin-left:20px;">
+            Grup Kelime Sayısı: <input type="number" id="grupKelime" value="5">
+        </span>
+        <span id="duelloAyari" style="margin-left:20px;">
+            Düello Kelime Sayısı: <input type="number" id="duelloKelime" value="3">
+        </span>
     </div>
 
     <div class="flex">
@@ -42,45 +54,40 @@
                 <div id="oyuncuListesi" class="list-box"></div>
             </div>
         </div>
-
         <div class="col">
             <div class="card">
-                <h3>📚 Kelime Havuzu (Kalıcı)</h3>
-                <div id="ihtiyac" style="margin-bottom:10px; font-weight:bold;">Hesaplanıyor...</div>
-                <div style="display:flex; gap:5px;">
+                <h3>📚 Kelime Havuzu</h3>
+                <div id="ihtiyac" style="font-size:12px; color:#666"></div>
+                <div style="display:flex; gap:5px; margin-top:10px;">
                     <input id="k" placeholder="Kelime" style="flex:1;">
                     <input id="a" placeholder="İpucu" style="flex:1;">
                     <button class="btn-green" onclick="ekle()">EKLE</button>
                 </div>
-                <div id="kelimeHavuzu" class="list-box"></div>
+                <div id="kelimeHavuzu" class="list-box" style="margin-top:10px;"></div>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <h3>⚙️ Turnuva & Harf Motoru</h3>
-        <div style="display:flex; align-items:center; gap:15px;">
+        <h3>🚀 Turnuva Kontrolü</h3>
+        <div class="flex" style="align-items: center;">
             <span>Harf Hızı (sn):</span>
-            <input type="number" id="sn" value="10" style="width:50px;">
-            <button class="btn-blue" onclick="baslat()">⚔️ TURU BAŞLAT</button>
-            <button class="btn-red" onclick="maclariSifirla()">🏁 SADECE MAÇLARI TEMİZLE</button>
-            <button class="ana-ozel btn-red" style="background:#000;" onclick="herseyiSifirla()">🧹 HER ŞEYİ SİL (HAVUZ DAHİL)</button>
+            <input type="number" id="sn" value="10">
+            <button class="btn-blue" onclick="turnuvayiBaslat()">⚔️ TURU BAŞLAT</button>
+            <button class="btn-red" onclick="maclariSifirla()">Maçları Temizle</button>
+            <button class="ana-ozel btn-red" style="background:black" onclick="herseyiSifirla()">Her Şeyi Sil</button>
         </div>
     </div>
 
     <div class="card">
-        <h3>📊 Maç Takip</h3>
+        <h3>📊 Canlı Gruplar ve Maçlar</h3>
         <div id="macListesi"></div>
     </div>
 
     <script>
-        // Rol Bazlı Arayüz Ayarı
         var role = sessionStorage.getItem("adminRole");
-        document.getElementById("rol-etiket").innerText = (role === "ANA") ? "👑 BAŞ YÖNETİCİ: HABİP" : "👨‍🏫 MİSAFİR YÖNETİCİ";
-        if(role === "ANA") {
-            var anaElemanlar = document.querySelectorAll(".ana-ozel");
-            anaElemanlar.forEach(el => el.style.display = "block");
-        }
+        document.getElementById("rol-etiket").innerText = (role === "ANA") ? "👑 BAŞ YÖNETİCİ: HABİP" : "👨‍🏫 MİSAFİR";
+        if(role === "ANA") document.querySelectorAll(".ana-ozel").forEach(el => el.style.display="inline-block");
 
         var firebaseConfig = {
             apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
@@ -93,8 +100,15 @@
         };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
-        var motor;
+        var harfMotoru;
 
+        function modDegisti() {
+            var mode = document.getElementById("gameMode").value;
+            document.getElementById("grupAyari").style.display = (mode === "grup") ? "inline" : "none";
+            document.getElementById("duelloAyari").style.display = (mode === "duello") ? "inline" : "none";
+        }
+
+        // KELİME VE OYUNCU LİSTELEME (Aynı Mantık)
         function ekle() {
             var k = document.getElementById("k").value.toUpperCase().trim();
             var a = document.getElementById("a").value.trim();
@@ -103,46 +117,67 @@
         }
 
         db.ref("turnuva/havuz").on("value", s => {
-            var html = ""; window.hSayi = s.numChildren();
-            s.forEach(h => { html += `<div class="item"><span><b>${h.val().k}</b> - ${h.val().a}</span> <button class="btn-red" onclick="db.ref('turnuva/havuz/${h.key}').remove()">SİL</button></div>`; });
-            document.getElementById("kelimeHavuzu").innerHTML = html || "Havuz boş.";
-            hesapla();
+            var h = ""; s.forEach(x => { h += `<div class="item"><span><b>${x.val().k}</b></span><button class="btn-red" onclick="db.ref('turnuva/havuz/${x.key}').remove()">X</button></div>`; });
+            document.getElementById("kelimeHavuzu").innerHTML = h;
         });
 
         db.ref("turnuva/oyuncular").on("value", s => {
-            var onHTML = "<h4>Onay Bekleyenler</h4>";
-            var aktifHTML = "<h4>Aktif Yarışmacılar</h4>";
-            window.oSayi = 0;
-            s.forEach(o => {
-                var d = o.val();
-                if(d.durum === "onay_bekliyor") onHTML += `<div class="item">${d.ad} <button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">ONAYLA</button></div>`;
-                else if(d.durum === "bekliyor" || d.durum === "eslesti") { window.oSayi++; aktifHTML += `<div class="item">${d.ad} <span style="color:green">HAZIR</span></div>`; }
+            var h = ""; window.bekleyenler = [];
+            s.forEach(x => {
+                var d = x.val();
+                if(d.durum === "onay_bekliyor") h += `<div class="item">${d.ad}<button class="btn-green" onclick="db.ref('turnuva/oyuncular/${x.key}/durum').set('bekliyor')">Onayla</button></div>`;
+                else if(d.durum === "bekliyor") {
+                    window.bekleyenler.push({id:x.key, ad:d.ad});
+                    h += `<div class="item">${d.ad} <span style="color:green">HAZIR</span></div>`;
+                }
             });
-            document.getElementById("oyuncuListesi").innerHTML = onHTML + aktifHTML;
-            hesapla();
+            document.getElementById("oyuncuListesi").innerHTML = h;
         });
 
-        function hesapla() {
-            var ger = Math.floor(window.oSayi / 2) * 3;
-            document.getElementById("ihtiyac").innerText = `Onaylı Oyuncu: ${window.oSayi} | Gerekli Kelime: ${ger} | Mevcut Havuz: ${window.hSayi}`;
-        }
-
-        function baslat() {
-            db.ref("turnuva").once("value", ts => {
-                var havuz = []; ts.child("havuz").forEach(h => { havuz.push(h.val()); });
+        // TURNUVA BAŞLATMA MANTIĞI (GRUP VEYA DÜELLO)
+        function turnuvayiBaslat() {
+            var mode = document.getElementById("gameMode").value;
+            db.ref("turnuva/havuz").once("value", hs => {
+                var havuz = []; hs.forEach(h => { havuz.push(h.val()); });
                 havuz = havuz.sort(() => 0.5 - Math.random());
-                var bekleyenler = []; ts.child("oyuncular").forEach(o => { if(o.val().durum === "bekliyor") bekleyenler.push({id:o.key, ad:o.val().ad}); });
-                if(bekleyenler.length < 2 || havuz.length < (Math.floor(bekleyenler.length/2)*3)) return alert("Yetersiz kelime veya oyuncu!");
                 
-                var idx = 0;
-                for(let i=0; i<bekleyenler.length; i+=2) {
-                    if(bekleyenler[i+1]) {
-                        var p1 = bekleyenler[i], p2 = bekleyenler[i+1];
-                        var mk = havuz.slice(idx, idx+3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
-                        idx += 3;
-                        db.ref("turnuva/maclar").push().set({ p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad, kelimeler:mk, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:"" });
-                        db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
-                        db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
+                if(window.bekleyenler.length < 2) return alert("Yetersiz oyuncu!");
+
+                if(mode === "grup") {
+                    // GRUP MODU: 4'erli veya 3'erli gruplara böl
+                    var oyuncular = window.bekleyenler.sort(() => 0.5 - Math.random());
+                    var grupSayisi = Math.ceil(oyuncular.length / 4);
+                    var kelimeSayisi = parseInt(document.getElementById("grupKelime").value);
+                    
+                    var kIdx = 0;
+                    for(let i=0; i<grupSayisi; i++) {
+                        var grupUyeleri = oyuncular.slice(i*4, (i+1)*4);
+                        var grupKelimeleri = havuz.slice(kIdx, kIdx + kelimeSayisi).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
+                        kIdx += kelimeSayisi;
+                        
+                        var macRef = db.ref("turnuva/maclar").push();
+                        macRef.set({
+                            tip: "grup",
+                            uyeler: grupUyeleri,
+                            kelimeler: grupKelimeleri,
+                            aktifRaunt: 0,
+                            skorlar: {}, // {oyuncuId: puan}
+                            durum: "aktif"
+                        });
+                        grupUyeleri.forEach(u => db.ref("turnuva/oyuncular/"+u.id+"/durum").set("eslesti"));
+                    }
+                } else {
+                    // DÜELLO MODU (Senin eski sistemin)
+                    var kIdx = 0; var kSayi = parseInt(document.getElementById("duelloKelime").value);
+                    for(let i=0; i<window.bekleyenler.length; i+=2) {
+                        if(window.bekleyenler[i+1]) {
+                            var p1 = window.bekleyenler[i], p2 = window.bekleyenler[i+1];
+                            var mk = havuz.slice(kIdx, kIdx+kSayi).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
+                            kIdx += kSayi;
+                            db.ref("turnuva/maclar").push().set({ tip:"duello", p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad, kelimeler:mk, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif" });
+                            db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
+                            db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
+                        }
                     }
                 }
                 motorBaslat();
@@ -150,9 +185,9 @@
         }
 
         function motorBaslat() {
-            if(motor) clearInterval(motor);
-            var s = document.getElementById("sn").value;
-            motor = setInterval(() => {
+            if(harfMotoru) clearInterval(harfMotoru);
+            var sn = document.getElementById("sn").value;
+            harfMotoru = setInterval(() => {
                 db.ref("turnuva/maclar").once("value", s => {
                     s.forEach(ms => {
                         var m = ms.val();
@@ -168,16 +203,20 @@
                         }
                     });
                 });
-            }, s * 1000);
+            }, sn * 1000);
         }
 
         db.ref("turnuva/maclar").on("value", s => {
-            var h = ""; s.forEach(m => { var v = m.val(); h += `<div class="item"><b>${v.p1_ad} vs ${v.p2_ad}</b> [${v.durum}]</div>`; });
+            var h = ""; s.forEach(m => {
+                var v = m.val();
+                if(v.tip === "grup") h += `<div class="item"><b>Grup Maçı:</b> ${v.uyeler.map(u=>u.ad).join(", ")} [${v.durum}]</div>`;
+                else h += `<div class="item"><b>Düello:</b> ${v.p1_ad} vs ${v.p2_ad} [${v.durum}]</div>`;
+            });
             document.getElementById("macListesi").innerHTML = h;
         });
 
-        function maclariSifirla() { db.ref("turnuva/maclar").remove(); db.ref("turnuva/oyuncular").remove(); }
-        function herseyiSifirla() { if(confirm("TÜM VERİLER silinecek?")) { db.ref("turnuva").remove(); location.reload(); } }
+        function maclariSifirla() { db.ref("turnuva/maclar").remove(); db.ref("turnuva/oyuncular").once("value", s => { s.forEach(x => { if(x.val().durum !== "onay_bekliyor") db.ref("turnuva/oyuncular/"+x.key+"/durum").set("bekliyor"); })}); }
+        function herseyiSifirla() { if(confirm("Her şey silinsin mi?")) db.ref("turnuva").remove(); }
     </script>
 </body>
 </html>
