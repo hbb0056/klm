@@ -1,0 +1,66 @@
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#0f172a;
+    color:white;
+}
+
+.container{
+    padding:20px;
+}
+
+.card{
+    background:#1e293b;
+    padding:15px;
+    margin-bottom:15px;
+    border-radius:10px;
+}
+
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:6px;
+    background:#22c55e;
+    color:white;
+    cursor:pointer;
+    margin:5px 0;
+}
+
+input{
+    padding:8px;
+    margin:5px 0;
+    width:100%;
+}
+
+.bracket{
+    display:flex;
+    justify-content:space-between;
+}
+
+.round{
+    width:23%;
+}
+
+.match{
+    background:#334155;
+    padding:8px;
+    margin-bottom:8px;
+    border-radius:6px;
+}
+
+#harfAlani{
+    font-size:28px;
+    letter-spacing:10px;
+    margin:20px 0;
+}
+
+.kupa{
+    font-size:50px;
+    text-align:center;
+    animation:pop 1s infinite alternate;
+}
+
+@keyframes pop{
+    from{transform:scale(1);}
+    to{transform:scale(1.1);}
+}
