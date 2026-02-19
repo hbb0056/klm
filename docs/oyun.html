@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yarışma</title>
+    <title>Kelime Avı</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -13,11 +13,11 @@
     </style>
 </head>
 <body>
-    <div class="bar"><div id="modAd">-</div><div id="skor" style="color:#f1c40f">Puan: 0</div></div>
+    <div class="bar"><div id="bilgi">Yükleniyor...</div><div id="skor" style="color:#f1c40f">Puan: 0</div></div>
     <div style="padding:20px;">
-        <p id="ipucu" style="color:#00d2ff">İpucu...</p>
+        <p id="ipucu" style="color:#00d2ff; font-size:1.2rem">İpucu bekleniyor...</p>
         <div id="kelime">-----</div><br>
-        <input id="tahmin" placeholder="Cevabı yazın..." onkeypress="if(event.key === 'Enter') gonder()">
+        <input id="tahmin" placeholder="Tahmininizi yazın..." onkeypress="if(event.key === 'Enter') gonder()">
     </div>
 
     <script>
@@ -29,6 +29,7 @@
         db.ref("turnuva/oyuncular/" + myID).once("value", s => { if(s.exists()) myTeam = s.val().takim || "Bireysel"; });
 
         db.ref("turnuva/maclar").on("value", s => {
+            if(!s.exists()) { alert("Oyun durduruldu!"); window.location.href="index.html"; return; }
             s.forEach(m => {
                 var v = m.val();
                 var katildi = (v.tip === "savas") || (v.tip === "grup" && v.skorlar && v.skorlar.hasOwnProperty(myID)) || (v.p1 === myID || v.p2 === myID);
@@ -36,11 +37,8 @@
                     activeID = m.key;
                     document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
                     document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-                    document.getElementById("modAd").innerText = v.tip.toUpperCase();
-                    var p = 0;
-                    if(v.tip==="savas") p = v.skorlar[myTeam] || 0;
-                    else if(v.tip==="grup") p = v.skorlar[myID] || 0;
-                    else p = (v.p1 === myID ? v.p1_skor : v.p2_skor);
+                    document.getElementById("bilgi").innerText = v.tip.toUpperCase() + (myTeam !== "Bireysel" ? " - " + myTeam : "");
+                    let p = (v.tip==="savas") ? (v.skorlar[myTeam]||0) : (v.tip==="grup" ? v.skorlar[myID] : (v.p1===myID?v.p1_skor:v.p2_skor));
                     document.getElementById("skor").innerText = "Puan: " + p;
                 }
             });
