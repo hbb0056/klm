@@ -2,41 +2,49 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Merkezi</title>
+    <title>Başhakem Paneli</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        button { cursor: pointer; padding: 10px; border-radius: 6px; border: none; font-weight: bold; margin: 5px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .flex { display: flex; gap: 20px; }
+        .col { flex: 1; }
+        button { cursor: pointer; padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; }
         .btn-blue { background: #3498db; color: white; }
-        .btn-green { background: #27ae60; color: white; }
+        .btn-green { background: #2ecc71; color: white; }
         .btn-red { background: #e74c3c; color: white; }
-        .list-box { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
-        .item { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #eee; }
+        .list-box { max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; background: #fafafa; }
+        .item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; align-items: center; }
+        .score-box { background: #2c3e50; color: white; padding: 10px; border-radius: 8px; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>🛠️ Turnuva Yönetimi</h2>
+        <h2>👨‍🏫 Başhakem Kontrol Merkezi</h2>
         Mod: <select id="mod">
-            <option value="grup">🏆 Grup Aşaması (Otomatik Dağılım)</option>
-            <option value="savas">🏰 Takım Savaşı (Kaptanlı/Manuel)</option>
+            <option value="grup">🏆 Grup Aşaması (Otomatik)</option>
+            <option value="savas">🏰 Takım Savaşı (Kaptanlı)</option>
             <option value="duello">⚔️ Düello (Teke Tek)</option>
         </select>
         | Kelime: <input type="number" id="kAdet" value="5" style="width:40px;">
         | Hız: <input type="number" id="hiz" value="10" style="width:40px;">
         <button class="btn-blue" onclick="baslat()">🚀 BAŞLAT</button>
-        <button class="btn-red" onclick="sifirla()">🧹 Her Şeyi Sıfırla</button>
+        <button class="btn-red" onclick="durudur()">⏹️ OYUNU DURDUR</button>
+        <button class="btn-red" style="background:#000" onclick="sifirla()">🧹 SIFIRLA</button>
     </div>
 
-    <div style="display:flex; gap:20px;">
-        <div class="card" style="flex:1">
+    <div class="flex">
+        <div class="col card">
+            <h3>📊 Canlı Skor Tablosu</h3>
+            <div id="canliSkorlar" class="list-box">Oyun başladığında skorlar burada görünecek...</div>
+        </div>
+        <div class="col card">
             <h3>👥 Onay Bekleyenler</h3>
             <div id="onayListesi" class="list-box"></div>
         </div>
-        <div class="card" style="flex:1">
-            <h3>📚 Havuzdaki Kelimeler</h3>
+        <div class="col card">
+            <h3>📚 Kelime Havuzu</h3>
             <input id="k" placeholder="Kelime"> <input id="a" placeholder="İpucu">
             <button class="btn-green" onclick="ekle()">EKLE</button>
             <div id="havuzListesi" class="list-box" style="margin-top:10px;"></div>
@@ -55,7 +63,7 @@
         }
 
         db.ref("turnuva/havuz").on("value", s => {
-            var h = ""; s.forEach(x => { h += `<div class="item"><b>${x.val().k}</b></div>`; });
+            var h = ""; s.forEach(x => { h += `<div class="item"><span><b>${x.val().k}</b></span> <button class="btn-red" onclick="db.ref('turnuva/havuz/${x.key}').remove()">SİL</button></div>`; });
             document.getElementById("havuzListesi").innerHTML = h;
         });
 
@@ -69,6 +77,25 @@
             document.getElementById("onayListesi").innerHTML = h;
         });
 
+        // CANLI SKOR TAKİBİ
+        db.ref("turnuva/maclar").on("value", s => {
+            var h = "";
+            s.forEach(m => {
+                var v = m.val();
+                h += `<div class="score-box"><b>${v.tip.toUpperCase()}</b><br>`;
+                if(v.tip === "savas" || v.tip === "grup") {
+                    for(let key in v.skorlar) { 
+                        let isim = (v.tip === "grup") ? "Oyuncu/Grup" : key;
+                        h += `${isim}: ${v.skorlar[key]} Puan | `;
+                    }
+                } else {
+                    h += `${v.p1_ad}: ${v.p1_skor} - ${v.p2_ad}: ${v.p2_skor}`;
+                }
+                h += `</div>`;
+            });
+            document.getElementById("canliSkorlar").innerHTML = h || "Aktif maç yok.";
+        });
+
         function baslat() {
             var mod = document.getElementById("mod").value, kC = parseInt(document.getElementById("kAdet").value);
             db.ref("turnuva/havuz").once("value", hs => {
@@ -77,29 +104,23 @@
                 var kels = havuz.slice(0, kC).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
 
                 if(mod === "grup") {
-                    // OTOMATİK GRUPLANDIRMA (Kaptan/İsim Sormaz)
                     let liste = window.onaylilar.sort(() => 0.5 - Math.random());
                     let grupSayisi = Math.ceil(liste.length / 4);
                     for(let i=0; i < grupSayisi; i++) {
-                        let grupUyeleri = liste.slice(i*4, (i*4)+4);
-                        let macID = "grup_" + i;
-                        let sk = {}; grupUyeleri.forEach(u => { sk[u.id] = 0; db.ref("turnuva/oyuncular/"+u.id).update({durum:"eslesti", mID:macID}); });
-                        db.ref("turnuva/maclar/"+macID).set({ tip:"grup", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:sk });
+                        let uyeler = liste.slice(i*4, (i*4)+4);
+                        let sk = {}; uyeler.forEach(u => { sk[u.id] = 0; db.ref("turnuva/oyuncular/"+u.id).update({durum:"eslesti"}); });
+                        db.ref("turnuva/maclar/grup_"+i).set({ tip:"grup", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:sk });
                     }
-                } 
-                else if(mod === "savas") {
-                    // TAKIM SAVAŞI (Öğrencilere Seçim Ekranını Açar)
+                } else if(mod === "savas") {
                     db.ref("turnuva/maclar/savas_genel").set({ tip:"savas", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:{"SİSTEM":0} });
                     window.onaylilar.forEach(o => db.ref("turnuva/oyuncular/"+o.id+"/durum").set("takim_secme_ekrani"));
-                }
-                else if(mod === "duello") {
+                } else if(mod === "duello") {
                     let liste = window.onaylilar.sort(() => 0.5 - Math.random());
                     for(let i=0; i<liste.length; i+=2) {
                         if(liste[i+1]) {
-                            let mID = "duel_" + i;
-                            db.ref("turnuva/maclar/"+mID).set({ tip:"duello", durum:"aktif", p1:liste[i].id, p1_ad:liste[i].ad, p2:liste[i+1].id, p2_ad:liste[i+1].ad, p1_skor:0, p2_skor:0, aktifRaunt:0, kelimeler: kels });
-                            db.ref("turnuva/oyuncular/"+liste[i].id).update({durum:"eslesti", mID:mID});
-                            db.ref("turnuva/oyuncular/"+liste[i+1].id).update({durum:"eslesti", mID:mID});
+                            db.ref("turnuva/maclar/duel_"+i).set({ tip:"duello", durum:"aktif", p1:liste[i].id, p1_ad:liste[i].ad, p2:liste[i+1].id, p2_ad:liste[i+1].ad, p1_skor:0, p2_skor:0, aktifRaunt:0, kelimeler: kels });
+                            db.ref("turnuva/oyuncular/"+liste[i].id+"/durum").set("eslesti");
+                            db.ref("turnuva/oyuncular/"+liste[i+1].id+"/durum").set("eslesti");
                         }
                     }
                 }
@@ -108,7 +129,7 @@
         }
 
         function motorBaslat() {
-            var s = document.getElementById("hiz").value;
+            var hiz = document.getElementById("hiz").value;
             if(window.mtr) clearInterval(window.mtr);
             window.mtr = setInterval(() => {
                 db.ref("turnuva/maclar").once("value", s => {
@@ -124,9 +145,10 @@
                         }
                     });
                 });
-            }, s * 1000);
+            }, hiz * 1000);
         }
-        function sifirla() { db.ref("turnuva/maclar").remove(); db.ref("turnuva/oyuncular").remove(); db.ref("turnuva/takim_isimleri").remove(); }
+        function durudur() { db.ref("turnuva/maclar").remove(); }
+        function sifirla() { db.ref("turnuva").remove(); location.reload(); }
     </script>
 </body>
 </html>
