@@ -2,7 +2,8 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Yönetim Paneli</title>
+<title>Turnuva Yönetim Paneli</title>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
@@ -10,7 +11,8 @@
 body{
     margin:0;
     font-family:Segoe UI;
-    background:#f4f6f9;
+    background:#0f172a;
+    color:white;
 }
 
 .container{
@@ -20,60 +22,81 @@ body{
 
 /* SOL PANEL */
 .left{
-    width:25%;
+    width:20%;
     background:#1e293b;
-    color:white;
-    padding:20px;
+    padding:15px;
     overflow:auto;
 }
 
 .stage{
     background:#334155;
     padding:10px;
-    margin-bottom:15px;
+    margin-bottom:10px;
     border-radius:8px;
 }
 
 .stage h4{
-    margin:0 0 10px 0;
+    margin:0 0 8px 0;
 }
 
 .stage button{
     width:100%;
-    padding:8px;
+    padding:6px;
     border:none;
     background:#22c55e;
     color:white;
     border-radius:5px;
-    cursor:pointer;
 }
 
 /* ORTA PANEL */
 .middle{
-    width:35%;
+    width:50%;
     padding:20px;
     overflow:auto;
 }
 
-.card{
-    background:white;
-    padding:15px;
+.dashboard{
+    display:flex;
+    gap:15px;
     margin-bottom:20px;
+}
+
+.stat{
+    flex:1;
+    background:#1e293b;
+    padding:15px;
     border-radius:10px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+    text-align:center;
+}
+
+.bracket{
+    display:flex;
+    justify-content:space-between;
+}
+
+.round{
+    width:23%;
+}
+
+.match{
+    background:#1e293b;
+    padding:10px;
+    margin-bottom:15px;
+    border-radius:8px;
 }
 
 /* SAĞ PANEL */
 .right{
-    width:40%;
+    width:30%;
+    background:#1e293b;
     padding:20px;
-    background:#e2e8f0;
     overflow:auto;
 }
 
 input{
     padding:6px;
     margin:4px;
+    width:80%;
 }
 
 button{
@@ -88,52 +111,54 @@ button{
 
 <!-- SOL -->
 <div class="left">
-
 <h3>Turnuva Aşamaları</h3>
-
-<div class="stage">
-<h4>A Grubu</h4>
-<button onclick="baslatGrup('A')">Oyunu Başlat</button>
-</div>
-
-<div class="stage">
-<h4>B Grubu</h4>
-<button onclick="baslatGrup('B')">Oyunu Başlat</button>
-</div>
-
-<div class="stage">
-<h4>C Grubu</h4>
-<button onclick="baslatGrup('C')">Oyunu Başlat</button>
-</div>
-
-<div class="stage">
-<h4>Çeyrek Final</h4>
-<button onclick="baslatTur('ceyrek')">Oyunu Başlat</button>
-</div>
-
-<div class="stage">
-<h4>Yarı Final</h4>
-<button onclick="baslatTur('yari')">Oyunu Başlat</button>
-</div>
-
-<div class="stage">
-<h4>Final</h4>
-<button onclick="baslatTur('final')">Oyunu Başlat</button>
-</div>
-
+<div id="dynamicStages"></div>
 </div>
 
 <!-- ORTA -->
 <div class="middle">
 
-<div class="card">
-<h3>Aktif Oyuncular</h3>
-<div id="oyuncuListesi"></div>
+<div class="dashboard">
+<div class="stat">
+<h4>Toplam Oyuncu</h4>
+<div id="toplam">0</div>
 </div>
 
-<div class="card">
-<h3>Onay Bekleyenler</h3>
-<div id="onayListesi"></div>
+<div class="stat">
+<h4>Aktif Maç</h4>
+<div id="aktifMac">0</div>
+</div>
+
+<div class="stat">
+<h4>Üst Tur</h4>
+<div id="ustTur">0</div>
+</div>
+</div>
+
+<h3>Turnuva Ağacı</h3>
+
+<div class="bracket">
+
+<div class="round">
+<h4>Gruplar</h4>
+<div id="round_grup"></div>
+</div>
+
+<div class="round">
+<h4>Çeyrek</h4>
+<div id="round_ceyrek"></div>
+</div>
+
+<div class="round">
+<h4>Yarı</h4>
+<div id="round_yari"></div>
+</div>
+
+<div class="round">
+<h4>Final</h4>
+<div id="round_final"></div>
+</div>
+
 </div>
 
 </div>
@@ -141,36 +166,27 @@ button{
 <!-- SAĞ -->
 <div class="right">
 
-<div class="card">
 <h3>Kelime Havuzu</h3>
 
-Kelime:
-<input id="kelime">
+Kelime<br>
+<input id="kelime"><br>
 
-İpucu:
-<input id="ipucu">
+İpucu<br>
+<input id="ipucu"><br>
 
 <button onclick="kelimeEkle()">Ekle</button>
 
 <hr>
 
-Kelime Sayısı:
-<input type="number" id="kAdet" value="5">
+Kelime Sayısı<br>
+<input type="number" id="kAdet" value="5"><br>
 
-Harf Açılma Hızı(sn):
-<input type="number" id="hiz" value="10">
+Harf Açılma Hızı<br>
+<input type="number" id="hiz" value="10"><br><br>
 
-<br><br>
-
-<button onclick="genelBaslat()">GENEL OYUNU BAŞLAT</button>
-
-<br><br>
-
-<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button>
-<button onclick="db.ref('turnuva/havuz').remove()">Tüm Kelimeleri Sil</button>
+<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button><br><br>
+<button onclick="db.ref('turnuva/havuz').remove()">Kelimeleri Sil</button><br><br>
 <button onclick="db.ref('turnuva/oyuncular').remove()">Oyuncuları At</button>
-
-</div>
 
 </div>
 
@@ -186,53 +202,75 @@ var firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
+var db=firebase.database();
 
-/* OYUNCULAR */
+/* OYUNCU SAYISI */
 db.ref("turnuva/oyuncular").on("value",s=>{
-    var aktif="";
-    var onay="";
+    let toplam=0;
+    let ust=0;
 
     s.forEach(o=>{
-        var d=o.val();
-
-        if(d.durum=="onay_bekliyor"){
-            onay+=d.ad+
-            ` <button onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button><br>`;
-        }else{
-            aktif+=d.ad+"<br>";
-        }
+        toplam++;
+        if(o.val().durum=="ust_tur") ust++;
     });
 
-    document.getElementById("oyuncuListesi").innerHTML=aktif;
-    document.getElementById("onayListesi").innerHTML=onay;
+    document.getElementById("toplam").innerText=toplam;
+    document.getElementById("ustTur").innerText=ust;
+});
+
+/* AKTİF MAÇ */
+db.ref("turnuva/maclar").on("value",s=>{
+    document.getElementById("aktifMac").innerText=s.numChildren();
+});
+
+/* DİNAMİK AŞAMALAR */
+db.ref("turnuva/maclar").on("value",s=>{
+    let html="";
+    s.forEach(m=>{
+        html+=`
+        <div class="stage">
+        <h4>${m.key}</h4>
+        <button onclick="alert('${m.key} başlatıldı')">Oyunu Başlat</button>
+        </div>`;
+    });
+
+    document.getElementById("dynamicStages").innerHTML=html;
+});
+
+/* BRACKET */
+db.ref("turnuva/maclar").on("value",s=>{
+
+    document.getElementById("round_grup").innerHTML="";
+    document.getElementById("round_ceyrek").innerHTML="";
+    document.getElementById("round_yari").innerHTML="";
+    document.getElementById("round_final").innerHTML="";
+
+    s.forEach(m=>{
+        let div=document.createElement("div");
+        div.className="match";
+        div.innerHTML="<b>"+m.key+"</b>";
+
+        if(m.key.includes("Grup"))
+            document.getElementById("round_grup").appendChild(div);
+        else if(m.key.includes("ceyrek"))
+            document.getElementById("round_ceyrek").appendChild(div);
+        else if(m.key.includes("yari"))
+            document.getElementById("round_yari").appendChild(div);
+        else if(m.key.includes("final"))
+            document.getElementById("round_final").appendChild(div);
+    });
+
 });
 
 /* KELİME EKLE */
 function kelimeEkle(){
     var k=document.getElementById("kelime").value.toUpperCase();
     var i=document.getElementById("ipucu").value;
-
     if(k && i){
         db.ref("turnuva/havuz").push({k:k,a:i});
         document.getElementById("kelime").value="";
         document.getElementById("ipucu").value="";
     }
-}
-
-/* GRUP BAŞLAT */
-function baslatGrup(grup){
-    alert(grup+" Grubu başlatıldı (mevcut sistemine bağlanabilir)");
-}
-
-/* TUR BAŞLAT */
-function baslatTur(tur){
-    alert(tur+" turu başlatıldı (mevcut sistemine bağlanabilir)");
-}
-
-/* GENEL BAŞLAT */
-function genelBaslat(){
-    alert("Genel oyun başlatıldı");
 }
 
 </script>
