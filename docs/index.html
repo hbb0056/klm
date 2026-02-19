@@ -15,26 +15,23 @@
 </head>
 <body>
     <div class="box">
-        <h2 id="baslik">🏆 Kelime Avı</h2>
-        
+        <h2>🏆 Kelime Avı</h2>
         <div id="step1">
             <input id="ad" placeholder="Adınız Soyadınız">
-            <button onclick="kaydol()">DERSE KATIL</button>
+            <button onclick="kaydol()">KATIL</button>
         </div>
-
         <div id="step2" class="hidden">
-            <p id="mesaj">⏳ Öğretmen onayı bekleniyor...</p>
+            <p id="mesaj">⏳ Onay bekleniyor...</p>
         </div>
-
         <div id="step3" class="hidden">
-            <p>Öğretmen Takım Savaşını Başlattı!</p>
+            <p id="modMesaj">Takımını Belirle!</p>
             <select id="rolSec" onchange="rolDegis()">
-                <option value="oyuncu">Bir Takıma Katıl</option>
-                <option value="kaptan">Yeni Takım Kur (Kaptan)</option>
+                <option value="oyuncu">Var Olan Gruba/Takıma Katıl</option>
+                <option value="kaptan">Yeni Grup/Takım Kur (Kaptan)</option>
             </select>
-            <input id="yeniTakimAd" class="hidden" placeholder="Takım İsmi Yazın">
-            <select id="hazirTakimlar"><option value="">Takım Seçin...</option></select>
-            <button onclick="takimTamamla()">OYUNA GİR</button>
+            <input id="yeniAd" class="hidden" placeholder="İsim Yazın (Örn: Grup A)">
+            <select id="hazirListe"><option value="">Seçiniz...</option></select>
+            <button onclick="tamamla()">OYUNA GİR</button>
         </div>
     </div>
 
@@ -55,39 +52,36 @@
 
         function rolDegis() {
             var rol = document.getElementById("rolSec").value;
-            document.getElementById("yeniTakimAd").className = (rol === "kaptan") ? "" : "hidden";
-            document.getElementById("hazirTakimlar").className = (rol === "oyuncu") ? "" : "hidden";
+            document.getElementById("yeniAd").className = (rol === "kaptan") ? "" : "hidden";
+            document.getElementById("hazirListe").className = (rol === "oyuncu") ? "" : "hidden";
         }
 
-        // Dinamik Durum Takibi
         db.ref("turnuva/oyuncular/" + myID).on("value", s => {
             if(!s.exists()) return;
             var d = s.val();
-            if(d.durum === "bekliyor") {
-                document.getElementById("mesaj").innerText = "✔️ Onaylandınız. Oyunun başlaması bekleniyor...";
-            }
-            if(d.durum === "takim_sec") {
+            if(d.durum === "bekliyor") document.getElementById("mesaj").innerText = "✔️ Onaylandınız. Mod seçimi bekleniyor...";
+            if(d.durum === "secim_yap") {
                 document.getElementById("step2").classList.add("hidden");
                 document.getElementById("step3").classList.remove("hidden");
-                takimListesiGuncelle();
+                listeGuncelle();
             }
             if(d.durum === "eslesti") window.location.href = "oyun.html";
         });
 
-        function takimListesiGuncelle() {
-            db.ref("turnuva/takimlar").on("value", ts => {
-                var sel = document.getElementById("hazirTakimlar");
-                sel.innerHTML = '<option value="">Takım Seçin...</option>';
+        function listeGuncelle() {
+            db.ref("turnuva/gruplar").on("value", ts => {
+                var sel = document.getElementById("hazirListe");
+                sel.innerHTML = '<option value="">Seçiniz...</option>';
                 ts.forEach(t => { sel.innerHTML += `<option value="${t.key}">${t.key}</option>`; });
             });
         }
 
-        function takimTamamla() {
+        function tamamla() {
             var rol = document.getElementById("rolSec").value;
-            var tAd = (rol === "kaptan") ? document.getElementById("yeniTakimAd").value.trim().toUpperCase() : document.getElementById("hazirTakimlar").value;
-            if(!tAd) return alert("Takım belirleyin!");
-            if(rol === "kaptan") db.ref("turnuva/takimlar/" + tAd).set(true);
-            db.ref("turnuva/oyuncular/" + myID).update({ takim: tAd, durum: "eslesti" });
+            var ad = (rol === "kaptan") ? document.getElementById("yeniAd").value.trim().toUpperCase() : document.getElementById("hazirListe").value;
+            if(!ad) return alert("Seçim yapın!");
+            if(rol === "kaptan") db.ref("turnuva/gruplar/" + ad).set(true);
+            db.ref("turnuva/oyuncular/" + myID).update({ grup: ad, durum: "eslesti" });
         }
     </script>
 </body>
