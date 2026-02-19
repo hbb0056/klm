@@ -2,98 +2,70 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yarışma Alanı</title>
+    <title>Grup Savaşı!</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; }
-        .arena { background: #16213e; padding: 20px; border-radius: 20px; display: inline-block; margin-top: 50px; border: 4px solid #e94560; width: 90%; max-width: 500px; }
-        #kelime { font-size: 40px; letter-spacing: 10px; background: #1a1a2e; padding: 15px; border-radius: 10px; margin: 20px 0; }
-        input { padding: 15px; font-size: 18px; width: 80%; border-radius: 10px; border: none; outline: none; text-align: center; }
-        .puan-tablosu { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+        .header { background: #16213e; padding: 20px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 20px; }
+        .main { margin-top: 50px; }
+        #kelime { font-size: 45px; letter-spacing: 12px; font-family: monospace; background: #1a1a2e; padding: 20px; border-radius: 15px; display: inline-block; margin: 20px 0; }
+        input { padding: 15px; font-size: 22px; width: 300px; border-radius: 10px; border: none; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="arena">
-        <div id="bilgi" class="puan-tablosu">Yükleniyor...</div>
-        <p id="ipucu" style="color:#f1c40f">...</p>
-        <div id="kelime">-----</div>
-        <input id="tahmin" placeholder="Cevabı yazın..." onkeypress="if(event.key === 'Enter') gonder()">
+    <div class="header">
+        <div id="benimTakim">Takım: -</div>
+        <div id="takimSkor" style="color:#f1c40f">Puan: 0</div>
+    </div>
+
+    <div class="main">
+        <p>İpucu: <span id="ipucu" style="color:#00d2ff">...</span></p>
+        <div id="kelime">-----</div><br>
+        <input id="tahmin" placeholder="Hızlı yaz!" onkeypress="if(event.key === 'Enter') gonder()">
     </div>
 
     <script>
-        var firebaseConfig = {
-            apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
-            authDomain: "kelime-avi-bec9f.firebaseapp.com",
-            databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-            projectId: "kelime-avi-bec9f",
-            storageBucket: "kelime-avi-bec9f.appspot.com",
-            messagingSenderId: "154681825331",
-            appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
-        };
+        var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
         var myID = localStorage.getItem("turnuva_id");
-        var activeMac = null;
+        var myTeam = "";
 
-        db.ref("turnuva/maclar").on("value", s => {
-            s.forEach(m => {
-                var v = m.val();
-                var katilimci = (v.tip === "grup") ? v.uyeler.some(u => u.id === myID) : (v.p1 === myID || v.p2 === myID);
-                if(katilimci && v.durum === "aktif") {
-                    activeMac = { id: m.key, ...v };
-                    document.getElementById("bilgi").innerText = (v.tip === "grup") ? "GRUP AŞAMASI - PUAN TOPLA!" : "DÜELLO - RAKİBİNİ ELE!";
-                    document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
-                    document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-                }
-            });
+        db.ref("turnuva/oyuncular/" + myID).once("value", s => { 
+            myTeam = s.val().takim; 
+            document.getElementById("benimTakim").innerText = "Takım: " + myTeam;
+        });
+
+        db.ref("turnuva/maclar/grup_savasi_1").on("value", s => {
+            if(s.exists()) {
+                var v = s.val();
+                document.getElementById("takimSkor").innerText = "Puan: " + (v.skorlar[myTeam] || 0);
+                document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
+                document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
+            }
         });
 
         function gonder() {
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
-            if(!t || !activeMac) return;
             document.getElementById("tahmin").value = "";
-
-            db.ref("turnuva/maclar/" + activeMac.id).transaction(mac => {
-                if(!mac || mac.durum !== "aktif") return mac;
-                var r = mac.aktifRaunt;
-                if(t === mac.kelimeler[r].k) {
-                    if(mac.tip === "grup") {
-                        if(!mac.skorlar) mac.skorlar = {};
-                        mac.skorlar[myID] = (mac.skorlar[myID] || 0) + 1;
-                    } else {
-                        if(mac.p1 === myID) mac.p1_skor++; else mac.p2_skor++;
-                    }
-                }
-                
-                // Raunt Sonu Kontrolü
-                if(mac.aktifRaunt < mac.kelimeler.length - 1) {
-                    mac.aktifRaunt++;
-                } else {
-                    mac.durum = "bitti";
-                    if(mac.tip === "duello") {
-                        mac.winner = mac.p1_skor >= mac.p2_skor ? mac.p1 : mac.p2;
+            
+            db.ref("turnuva/maclar/grup_savasi_1").transaction(mac => {
+                if(mac && mac.durum === "aktif") {
+                    if(t === mac.kelimeler[mac.aktifRaunt].k) {
+                        mac.skorlar[myTeam] = (mac.skorlar[myTeam] || 0) + 1;
+                        if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++;
+                        else mac.durum = "bitti";
                     }
                 }
                 return mac;
             });
         }
 
-        db.ref("turnuva/maclar").on("child_changed", s => {
-            if(activeMac && s.key === activeMac.id && s.val().durum === "bitti") {
-                var v = s.val();
-                if(v.tip === "grup") {
-                    alert("Grup maçı bitti! Öğretmeninin sonuçları açıklamasını bekle.");
-                    db.ref("turnuva/oyuncular/" + myID + "/durum").set("bekliyor").then(() => window.location.href="index.html");
-                } else {
-                    if(v.winner === myID) {
-                        alert("Kazandın! Üst tura çıktın.");
-                        db.ref("turnuva/oyuncular/" + myID + "/durum").set("bekliyor").then(() => window.location.href="index.html");
-                    } else {
-                        alert("Elendin!");
-                        db.ref("turnuva/oyuncular/" + myID + "/durum").set("elendi").then(() => window.location.href="index.html");
-                    }
-                }
+        db.ref("turnuva/maclar/grup_savasi_1/durum").on("value", s => {
+            if(s.val() === "bitti") {
+                alert("Savaş Bitti! Sonuçları öğretmenin ekranından gör.");
+                window.location.href = "index.html";
             }
         });
     </script>
