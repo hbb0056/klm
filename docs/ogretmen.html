@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Turnuva Yönetim Paneli</title>
+<title>Kelime Avı Turnuva Sistemi</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -14,13 +14,9 @@ body{margin:0;font-family:Segoe UI;background:#0f172a;color:white;}
 .middle{width:50%;padding:20px;overflow:auto;}
 .right{width:30%;background:#1e293b;padding:20px;overflow:auto;}
 .card{background:#334155;padding:15px;margin-bottom:15px;border-radius:10px;}
-.stat{flex:1;background:#1e293b;padding:15px;border-radius:10px;text-align:center;}
-.dashboard{display:flex;gap:15px;margin-bottom:20px;}
-.bracket{display:flex;justify-content:space-between;}
-.round{width:23%;}
-.match{background:#1e293b;padding:8px;margin-bottom:10px;border-radius:6px;}
 button{padding:6px 10px;border:none;border-radius:5px;background:#22c55e;color:white;cursor:pointer;margin-top:5px;}
 input{padding:6px;margin:4px 0;width:90%;}
+.match{background:#1e293b;padding:8px;margin:5px 0;border-radius:6px;}
 .wordItem{background:#1e293b;padding:5px;margin:4px 0;border-radius:5px;display:flex;justify-content:space-between;}
 </style>
 </head>
@@ -31,183 +27,248 @@ input{padding:6px;margin:4px 0;width:90%;}
 
 <div class="left">
 <h3>Turnuva Aşamaları</h3>
-<div id="dynamicStages"></div>
+<button onclick="gruplariOlustur()">Grupları Oluştur</button>
+<button onclick="grupMaclariniOlustur()">Grup Maçlarını Oluştur</button>
+<button onclick="ceyrekOlustur()">Çeyrek Final</button>
+<button onclick="yariOlustur()">Yarı Final</button>
+<button onclick="finalOlustur()">Final</button>
+<button onclick="sampiyonBelirle()">Şampiyonu Belirle</button>
+<hr>
+<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button>
 </div>
 
 <div class="middle">
 
-<div class="dashboard">
-<div class="stat">
-<h4>Toplam Oyuncu</h4>
-<div id="toplam">0</div>
-</div>
-<div class="stat">
-<h4>Aktif Maç</h4>
-<div id="aktifMac">0</div>
-</div>
-<div class="stat">
-<h4>En Yüksek Skor</h4>
-<div id="enIyi">-</div>
-</div>
-</div>
-
 <h3>Turnuva Ağacı</h3>
 
-<div class="bracket">
-<div class="round"><h4>Gruplar</h4><div id="round_grup"></div></div>
-<div class="round"><h4>Çeyrek</h4><div id="round_ceyrek"></div></div>
-<div class="round"><h4>Yarı</h4><div id="round_yari"></div></div>
-<div class="round"><h4>Final</h4><div id="round_final"></div></div>
+<div class="card">
+<h4>Gruplar</h4>
+<div id="gruplar"></div>
+</div>
+
+<div class="card">
+<h4>Eleme Turları</h4>
+<div id="eleme"></div>
 </div>
 
 </div>
 
 <div class="right">
 
+<h3>Oyuncu Ekle</h3>
+<input id="oyuncuAdi" placeholder="Oyuncu adı">
+<button onclick="oyuncuEkle()">Ekle</button>
+
+<hr>
+
 <h3>Kelime Havuzu</h3>
-
-Kelime
-<input id="kelime">
-
-İpucu
-<input id="ipucu">
-
+<input id="kelime" placeholder="Kelime">
 <button onclick="kelimeEkle()">Kelime Ekle</button>
-
 <div id="kelimeListesi"></div>
 
-<hr>
-
-Kelime Sayısı
-<input type="number" id="kAdet" value="5">
-
-Harf Açılma Hızı
-<input type="number" id="hiz" value="10">
-
-<button onclick="aiGrupBaslat()">AI Grup Oluştur</button>
-<button onclick="oyunuBaslat()">OYUNU BAŞLAT</button>
-
-<hr>
-
-<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button>
-<button onclick="db.ref('turnuva/havuz').remove()">Kelimeleri Sil</button>
-<button onclick="db.ref('turnuva/oyuncular').remove()">Oyuncuları At</button>
-
 </div>
-
 </div>
 
 <script>
 
 var firebaseConfig = {
-    apiKey: "AIzaSy...",
-    authDomain: "kelime-avi-bec9f.firebaseapp.com",
-    databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-    projectId: "kelime-avi-bec9f"
+  apiKey: "API_KEY",
+  authDomain: "PROJECT.firebaseapp.com",
+  databaseURL: "https://PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PROJECT"
 };
 
 firebase.initializeApp(firebaseConfig);
-var db=firebase.database();
+var db = firebase.database();
 
-/* DASHBOARD */
-db.ref("turnuva/oyuncular").on("value",snap=>{
-    document.getElementById("toplam").innerText=snap.numChildren();
-});
-
-db.ref("turnuva/maclar").on("value",snap=>{
-    document.getElementById("aktifMac").innerText=snap.numChildren();
-
-    let enYuksek=0;
-    snap.forEach(m=>{
-        let s=m.val().skorlar;
-        if(s){
-            for(let o in s){
-                if(s[o]>enYuksek) enYuksek=s[o];
-            }
-        }
-    });
-
-    document.getElementById("enIyi").innerText=enYuksek;
-});
+/* OYUNCU EKLE */
+function oyuncuEkle(){
+  let ad=document.getElementById("oyuncuAdi").value;
+  if(ad){
+    db.ref("turnuva/oyuncular").push({ad:ad,puan:0,grup:""});
+    document.getElementById("oyuncuAdi").value="";
+  }
+}
 
 /* KELİME EKLE */
 function kelimeEkle(){
-    var k=document.getElementById("kelime").value.toUpperCase();
-    var i=document.getElementById("ipucu").value;
-    if(k && i){
-        db.ref("turnuva/havuz").push({k:k,a:i});
-        document.getElementById("kelime").value="";
-        document.getElementById("ipucu").value="";
-    }
+  let k=document.getElementById("kelime").value.toUpperCase();
+  if(k){
+    db.ref("turnuva/havuz").push({kelime:k});
+    document.getElementById("kelime").value="";
+  }
 }
 
-/* KELİME LİSTELE */
+/* KELİME LİSTE */
 db.ref("turnuva/havuz").on("value",snap=>{
-    let html="";
-    snap.forEach(w=>{
-        html+=`
-        <div class="wordItem">
-        ${w.val().k}
-        <button onclick="db.ref('turnuva/havuz/${w.key}').remove()">X</button>
-        </div>`;
-    });
-    document.getElementById("kelimeListesi").innerHTML=html;
+  let html="";
+  snap.forEach(w=>{
+    html+=`<div class="wordItem">
+      ${w.val().kelime}
+      <button onclick="db.ref('turnuva/havuz/${w.key}').remove()">X</button>
+    </div>`;
+  });
+  document.getElementById("kelimeListesi").innerHTML=html;
 });
 
-/* AI GRUP */
-function aiGrupBaslat(){
+/* GRUP OLUŞTUR */
+function gruplariOlustur(){
+  db.ref("turnuva/oyuncular").once("value").then(snap=>{
+    let oyuncular=[];
+    snap.forEach(o=>oyuncular.push({id:o.key,...o.val()}));
 
-    db.ref("turnuva/oyuncular").once("value").then(snap=>{
-        let oyuncular=[];
-        snap.forEach(o=>{
-            oyuncular.push({ad:o.val().ad});
-        });
+    oyuncular.sort(()=>0.5-Math.random());
+    let gruplar=["A","B","C","D"];
 
-        if(oyuncular.length<2){
-            alert("Yeterli oyuncu yok");
-            return;
+    let index=0;
+    gruplar.forEach(g=>{
+      for(let i=0;i<oyuncular.length/4;i++){
+        if(oyuncular[index]){
+          db.ref("turnuva/oyuncular/"+oyuncular[index].id).update({grup:g,puan:0});
+          index++;
         }
-
-        oyuncular.sort(()=>0.5-Math.random());
-
-        db.ref("turnuva/maclar").remove();
-
-        let skor={},ilerleme={};
-        oyuncular.forEach(o=>{
-            skor[o.ad]=0;
-            ilerleme[o.ad]=0;
-        });
-
-        db.ref("turnuva/maclar/Grup-1").set({
-            tip:"grup",
-            durum:"hazir",
-            skorlar:skor,
-            ilerleme:ilerleme
-        });
+      }
     });
+
+    alert("Gruplar oluşturuldu");
+  });
 }
 
-/* OYUNU BAŞLAT */
-function oyunuBaslat(){
+/* GRUP MAÇLARI */
+function grupMaclariniOlustur(){
+  db.ref("turnuva/oyuncular").once("value").then(snap=>{
+    let gruplar={};
+    snap.forEach(o=>{
+      let g=o.val().grup;
+      if(!gruplar[g]) gruplar[g]=[];
+      gruplar[g].push({id:o.key,...o.val()});
+    });
 
-    db.ref("turnuva/havuz").once("value").then(hsnap=>{
+    db.ref("turnuva/maclar").remove();
 
-        let havuz=[];
-        hsnap.forEach(w=>havuz.push(w.val()));
-
-        if(havuz.length==0){
-            alert("Kelime yok!");
-            return;
+    for(let g in gruplar){
+      let list=gruplar[g];
+      for(let i=0;i<list.length;i++){
+        for(let j=i+1;j<list.length;j++){
+          db.ref("turnuva/maclar").push({
+            tip:"grup",
+            grup:g,
+            p1:list[i].ad,
+            p2:list[j].ad,
+            skor1:0,
+            skor2:0
+          });
         }
+      }
+    }
 
-        db.ref("turnuva/maclar/Grup-1").once("value").then(msnap=>{
+    alert("Grup maçları oluşturuldu");
+  });
+}
 
-            if(!msnap.exists()){
-                alert("Önce grup oluştur!");
-                return;
-            }
+/* ÇEYREK */
+function ceyrekOlustur(){
+  db.ref("turnuva/oyuncular").once("value").then(snap=>{
+    let gruplar={};
+    snap.forEach(o=>{
+      let g=o.val().grup;
+      if(!gruplar[g]) gruplar[g]=[];
+      gruplar[g].push(o.val());
+    });
 
-            let mac=msnap.val();
+    let cikanlar=[];
+    for(let g in gruplar){
+      gruplar[g].sort((a,b)=>b.puan-a.puan);
+      if(gruplar[g][0]) cikanlar.push(gruplar[g][0]);
+      if(gruplar[g][1]) cikanlar.push(gruplar[g][1]);
+    }
 
-            let secilen=havuz
-                .sort(()=>0.5-Math.random())
+    cikanlar.sort(()=>0.5-Math.random());
+
+    for(let i=0;i<cikanlar.length;i+=2){
+      db.ref("turnuva/maclar").push({
+        tip:"ceyrek",
+        p1:cikanlar[i].ad,
+        p2:cikanlar[i+1].ad,
+        skor1:0,
+        skor2:0
+      });
+    }
+
+    alert("Çeyrek final oluşturuldu");
+  });
+}
+
+/* YARI */
+function yariOlustur(){
+  elemeOlustur("ceyrek","yari");
+}
+
+/* FİNAL */
+function finalOlustur(){
+  elemeOlustur("yari","final");
+}
+
+function elemeOlustur(onceki,sonraki){
+  db.ref("turnuva/maclar").once("value").then(snap=>{
+    let kazananlar=[];
+    snap.forEach(m=>{
+      let val=m.val();
+      if(val.tip==onceki){
+        if(val.skor1>val.skor2) kazananlar.push(val.p1);
+        else kazananlar.push(val.p2);
+      }
+    });
+
+    for(let i=0;i<kazananlar.length;i+=2){
+      db.ref("turnuva/maclar").push({
+        tip:sonraki,
+        p1:kazananlar[i],
+        p2:kazananlar[i+1],
+        skor1:0,
+        skor2:0
+      });
+    }
+
+    alert(sonraki+" oluşturuldu");
+  });
+}
+
+/* ŞAMPİYON */
+function sampiyonBelirle(){
+  db.ref("turnuva/maclar").once("value").then(snap=>{
+    snap.forEach(m=>{
+      let val=m.val();
+      if(val.tip=="final"){
+        let s=val.skor1>val.skor2?val.p1:val.p2;
+        alert("🏆 ŞAMPİYON: "+s);
+      }
+    });
+  });
+}
+
+/* CANLI LİSTELEME */
+db.ref("turnuva/oyuncular").on("value",snap=>{
+  let html="";
+  snap.forEach(o=>{
+    html+=`<div class="match">
+      ${o.val().ad} - Grup ${o.val().grup} - ${o.val().puan} P
+    </div>`;
+  });
+  document.getElementById("gruplar").innerHTML=html;
+});
+
+db.ref("turnuva/maclar").on("value",snap=>{
+  let html="";
+  snap.forEach(m=>{
+    let val=m.val();
+    html+=`<div class="match">
+      (${val.tip}) ${val.p1} ${val.skor1} - ${val.skor2} ${val.p2}
+    </div>`;
+  });
+  document.getElementById("eleme").innerHTML=html;
+});
+
+</script>
+</body>
+</html>
