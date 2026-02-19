@@ -1,57 +1,133 @@
-// ... (Firebase ayarları ve diğer kısımlar aynı)
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Öğretmen Paneli</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .flex { display: flex; gap: 20px; }
+        button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; margin: 2px; }
+        .btn-main { background: #3498db; } .btn-green { background: #2ecc71; } .btn-red { background: #e74c3c; } .btn-purple { background: #9b59b6; }
+        .list { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+        .score-item { background: #2c3e50; color: white; padding: 10px; margin-bottom: 5px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>👨‍🏫 Turnuva Yönetim Merkezi</h2>
+        <button class="btn-main" onclick="baslat()">🚀 GRUPLARI KUR VE BAŞLAT</button>
+        <button class="btn-purple" onclick="ustTuraGec()">🏆 ÜST TURA GEÇ (Grupta İlk 2 Kalır)</button>
+        <button class="btn-red" onclick="db.ref('turnuva/maclar').remove()">⏹️ MAÇLARI DURDUR</button>
+        <button style="background:black" onclick="if(confirm('Her şey silinecek!')) db.ref('turnuva').remove()">🧹 SİSTEMİ SIFIRLA</button>
+        <br><br>
+        Kelime Sayısı: <input type="number" id="kAdet" value="5" style="width:40px"> | 
+        Harf Hızı (sn): <input type="number" id="hiz" value="10" style="width:40px">
+    </div>
 
-function baslat(tip) {
-    db.ref("turnuva/havuz").once("value", hs => {
-        if(!hs.exists()) return alert("Kelime havuzu boş!");
-        var hav = []; hs.forEach(x => hav.push(x.val())); hav.sort(() => 0.5 - Math.random());
-        var kels = hav.slice(0, document.getElementById("kAdet").value).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
-        var l = window.onaylilar.sort(() => 0.5 - Math.random());
-        
-        db.ref("turnuva/maclar").remove();
+    <div class="flex">
+        <div class="card" style="flex:1">
+            <h3>📊 Canlı Gruplar ve Skorlar</h3>
+            <div id="canliSkorlar" class="list">Henüz maç başlamadı.</div>
+        </div>
+        <div class="card" style="flex:1">
+            <h3>👥 Öğrenciler</h3>
+            <div id="onayListesi" class="list"></div>
+        </div>
+        <div class="card" style="flex:1">
+            <h3>📚 Kelime Havuzu</h3>
+            <input id="k" placeholder="Kelime" style="width:70px"> <input id="a" placeholder="İpucu" style="width:70px">
+            <button class="btn-green" onclick="kelimeEkle()">EKLE</button>
+            <div id="havuzListesi" class="list" style="margin-top:10px"></div>
+        </div>
+    </div>
 
-        if(l.length <= 2 && l.length > 0) {
-            // Final veya tek grup varsa Düello formatı
-            db.ref("turnuva/maclar/FINAL").set({ 
-                tip:"duello", durum:"aktif", p1:l[0].id, p1_ad:l[0].ad, p2:l[1].id, p2_ad:l[1].ad, 
-                p1_skor:0, p2_skor:0, p1_ilerleme:0, p2_ilerleme:0, kelimeler:kels 
-            });
-            l.forEach(x => db.ref("turnuva/oyuncular/"+x.id).update({durum:"eslesti", takim:x.ad}));
-        } else {
-            // Grup Formatı
-            for(let i=0; i < Math.ceil(l.length/4); i++) {
-                let u = l.slice(i*4, (i*4)+4);
-                let sk = {}, il = {};
-                u.forEach(x => { 
-                    sk[x.ad] = 0; 
-                    il[x.ad] = 0; // Herkesin raundu 0'dan başlar
-                    db.ref("turnuva/oyuncular/"+x.id).update({durum:"eslesti", takim:x.ad}); 
-                });
-                db.ref("turnuva/maclar/Grup-"+(i+1)).set({ 
-                    tip:"grup", durum:"aktif", kelimeler:kels, skorlar:sk, ilerleme:il 
-                });
-            }
+    <script>
+        var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
+        firebase.initializeApp(firebaseConfig); var db = firebase.database();
+
+        function kelimeEkle() {
+            var k = document.getElementById("k").value.toUpperCase().trim(), a = document.getElementById("a").value.trim();
+            if(k && a) db.ref("turnuva/havuz").push({k, a});
+            document.getElementById("k").value = ""; document.getElementById("a").value = "";
         }
-        motor();
-    });
-}
 
-// Harf açma motoru artık sadece kelimelerin gizli hallerini günceller
-function motor() {
-    var hz = document.getElementById("hiz").value; if(window.mtr) clearInterval(window.mtr);
-    window.mtr = setInterval(() => {
-        db.ref("turnuva/maclar").once("value", s => { s.forEach(ms => {
-            var m = ms.val(); if(m.durum === "aktif") {
-                // Her kelime için rastgele bir harf açalım (tüm rauntlardaki kelimeler için)
-                m.kelimeler.forEach((kel, idx) => {
-                    var g = kel.gizli, k = kel.k, t = [];
-                    for(let i=0; i<g.length; i++) if(g[i]==="-") t.push(i);
-                    if(t.length > 1) {
-                        var sc = t[Math.floor(Math.random()*t.length)];
-                        var y = g.split(""); y[sc] = k[sc];
-                        db.ref(`turnuva/maclar/${ms.key}/kelimeler/${idx}/gizli`).set(y.join(""));
+        db.ref("turnuva/havuz").on("value", s => {
+            var h = ""; s.forEach(x => { h += `<div style="display:flex; justify-content:space-between; margin-bottom:5px"><span>${x.val().k}</span> <button class="btn-red" style="padding:2px 5px" onclick="db.ref('turnuva/havuz/${x.key}').remove()">SİL</button></div>`; });
+            document.getElementById("havuzListesi").innerHTML = h;
+        });
+
+        db.ref("turnuva/oyuncular").on("value", s => {
+            var h = ""; window.onaylilar = [];
+            s.forEach(o => {
+                var d = o.val();
+                if(d.durum === "onay_bekliyor") h += `<div>${d.ad} <button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button></div>`;
+                else { h += `<div>${d.ad} ✅</div>`; window.onaylilar.push({id:o.key, ad:d.ad}); }
+            });
+            document.getElementById("onayListesi").innerHTML = h;
+        });
+
+        db.ref("turnuva/maclar").on("value", s => {
+            var h = ""; s.forEach(m => {
+                var v = m.val(); h += `<div class="score-item"><b>${m.key}</b><br>`;
+                for(let t in v.skorlar) h += `<small>${t}: ${v.skorlar[t]} Puan</small><br>`;
+                h += `</div>`;
+            });
+            document.getElementById("canliSkorlar").innerHTML = h || "Maç bekleniyor...";
+        });
+
+        function baslat() {
+            db.ref("turnuva/havuz").once("value", hs => {
+                if(!hs.exists()) return alert("Havuzda kelime yok!");
+                var havuz = []; hs.forEach(x => havuz.push(x.val())); havuz.sort(() => 0.5 - Math.random());
+                var kels = havuz.slice(0, document.getElementById("kAdet").value).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
+                var l = window.onaylilar.sort(() => 0.5 - Math.random());
+                db.ref("turnuva/maclar").remove();
+
+                for(let i=0; i < Math.ceil(l.length/4); i++) {
+                    let u = l.slice(i*4, (i*4)+4), sk = {}, il = {};
+                    u.forEach(x => { sk[x.ad] = 0; il[x.ad] = 0; db.ref("turnuva/oyuncular/"+x.id).update({durum:"eslesti", takim:x.ad}); });
+                    db.ref("turnuva/maclar/Grup-"+(i+1)).set({ tip:"grup", durum:"aktif", kelimeler:kels, skorlar:sk, ilerleme:il });
+                }
+                motor();
+            });
+        }
+
+        function motor() {
+            var hz = document.getElementById("hiz").value; if(window.mtr) clearInterval(window.mtr);
+            window.mtr = setInterval(() => {
+                db.ref("turnuva/maclar").once("value", s => { s.forEach(ms => {
+                    var m = ms.val(); if(m.durum === "aktif") {
+                        m.kelimeler.forEach((kel, idx) => {
+                            var t = []; for(let i=0; i<kel.gizli.length; i++) if(kel.gizli[i]==="-") t.push(i);
+                            if(t.length > 1) {
+                                var sIndex = t[Math.floor(Math.random()*t.length)];
+                                var yeniGizli = kel.gizli.split(""); yeniGizli[sIndex] = kel.k[sIndex];
+                                db.ref(`turnuva/maclar/${ms.key}/kelimeler/${idx}/gizli`).set(yeniGizli.join(""));
+                            }
+                        });
                     }
-                });
-            }
-        }); });
-    }, hz * 1000);
-}
+                }); });
+            }, hz * 1000);
+        }
+
+        async function ustTuraGec() {
+            if(!confirm("Gruplardaki ilk 2 kişi kalacak, diğerleri elenecek. Emin misiniz?")) return;
+            const snap = await db.ref("turnuva/maclar").once("value");
+            let kazananlar = [];
+            snap.forEach(m => {
+                let siralama = Object.entries(m.val().skorlar).sort((a,b) => b[1] - a[1]);
+                if(siralama[0]) kazananlar.push(siralama[0][0]);
+                if(siralama[1]) kazananlar.push(siralama[1][0]);
+            });
+            window.onaylilar.forEach(o => {
+                if(!kazananlar.includes(o.ad)) db.ref("turnuva/oyuncular/"+o.id).remove();
+                else db.ref("turnuva/oyuncular/"+o.id).update({durum:"bekliyor"});
+            });
+            alert("Eleme yapıldı! Kalanlar için tekrar BAŞLAT butununa basabilirsiniz.");
+        }
+    </script>
+</body>
+</html>
