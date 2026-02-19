@@ -1,87 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Kelime Avı - Katılım</title>
+  <title>Kelime Oyunu</title>
+</head>
+<body>
+
+<h2>Kelime Oyunu</h2>
+
+<div id="login">
+  <input type="text" id="playerName" placeholder="Adınızı yazın">
+  <button onclick="joinGame()">Katıl</button>
+  <p id="status"></p>
+</div>
+
+<div id="game" style="display:none;">
+  <h3 id="hint"></h3>
+  <h2 id="word"></h2>
+  <input type="text" id="guess" placeholder="Tahmin">
+  <button onclick="sendGuess()">Gönder</button>
+  <p id="message"></p>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<style>
-body{
-    margin:0;
-    font-family:Segoe UI;
-    background:#0f172a;
-    color:white;
-    text-align:center;
-    padding:30px;
-}
-.card{
-    background:#1e293b;
-    padding:20px;
-    border-radius:10px;
-    max-width:400px;
-    margin:auto;
-}
-input{
-    padding:10px;
-    width:90%;
-    margin:10px 0;
-}
-button{
-    padding:10px 15px;
-    border:none;
-    border-radius:6px;
-    background:#22c55e;
-    color:white;
-    cursor:pointer;
-}
-</style>
-</head>
-
-<body>
-
-<div class="card">
-<h2>Turnuvaya Katıl</h2>
-<input id="isim" placeholder="İsminizi girin">
-<button onclick="katil()">Katıl</button>
-<h3 id="durum"></h3>
-</div>
-
 <script>
 
-// FIREBASE CONFIG
 var firebaseConfig = {
-  apiKey: "API_KEY_BURAYA",
+  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
-  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com/",
+  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
   projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.appspot.com",
-  messagingSenderId: "MESSAGING_ID_BURAYA",
-  appId: "APP_ID_BURAYA"
+  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
+  messagingSenderId: "154681825331",
+  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// Katılma fonksiyonu
-function katil(){
+var playerId = null;
+var playerName = null;
+var guessed = false;
 
-    var isim = document.getElementById("isim").value;
+function joinGame(){
+  playerName = document.getElementById("playerName").value;
 
-    if(!isim){
-        alert("İsim giriniz");
-        return;
+  if(playerName == ""){
+    alert("Adınızı yazın");
+    return;
+  }
+
+  db.ref("waitingPlayers").push({
+    name: playerName
+  });
+
+  document.getElementById("status").innerText = "Onay bekleniyor...";
+}
+
+db.ref("players").on("child_added", function(snapshot){
+  if(snapshot.val().name == playerName){
+    playerId = snapshot.key;
+    document.getElementById("login").style.display="none";
+    document.getElementById("game").style.display="block";
+  }
+});
+
+db.ref("game/current").on("value", function(snapshot){
+  var data = snapshot.val();
+  if(data){
+    document.getElementById("hint").innerText = "İpucu: " + data.hint;
+    document.getElementById("word").innerText = data.displayWord;
+    guessed = false;
+    document.getElementById("message").innerText="";
+  }
+});
+
+function sendGuess(){
+  if(guessed) return;
+
+  var guess = document.getElementById("guess").value.toUpperCase();
+
+  db.ref("game/current").once("value", function(snapshot){
+    var data = snapshot.val();
+
+    if(guess == data.word.toUpperCase()){
+      var puan = 100 - (data.openedLetters * 10);
+      if(puan < 0) puan = 0;
+
+      db.ref("players/"+playerId+"/score").once("value", function(snap){
+        var eski = snap.val() || 0;
+        db.ref("players/"+playerId).update({
+          score: eski + puan
+        });
+      });
+
+      document.getElementById("message").innerText="Doğru! +" + puan + " puan";
+    } else {
+      document.getElementById("message").innerText="Yanlış!";
     }
 
-    db.ref("turnuva/oyuncular").push({
-        ad: isim,
-        puan: 0,
-        grup: ""
-    });
-
-    document.getElementById("durum").innerText="Başarıyla katıldınız!";
-    document.getElementById("isim").value="";
+    guessed = true;
+  });
 }
 
 </script>
