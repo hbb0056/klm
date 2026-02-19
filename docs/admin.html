@@ -10,6 +10,9 @@
 <h3>Onay Bekleyenler</h3>
 <div id="waitingList"></div>
 
+<h3>Onaylanmış Oyuncular</h3>
+<div id="playersList"></div>
+
 <h3>Kelime Havuzu</h3>
 <input type="text" id="wordInput" placeholder="Kelime">
 <input type="text" id="hintInput" placeholder="İpucu">
@@ -63,45 +66,60 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 // Waiting list
-db.ref("waitingPlayers").on("child_added", function(snapshot){
-  var data = snapshot.val();
-  var id = snapshot.key;
-  document.getElementById("waitingList").innerHTML +=
-    data.name+" <button onclick=\"approve('"+id+"','"+data.name+"')\">Onayla</button><br>";
+db.ref("waitingPlayers").on("value", function(snapshot){
+  var html="";
+  snapshot.forEach(function(child){
+    html+=child.val().name+
+      " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\">Onayla</button><br>";
+  });
+  document.getElementById("waitingList").innerHTML=html;
 });
 
+// Onayla
 function approve(id,name){
   db.ref("players").push({name:name,score:0});
   db.ref("waitingPlayers/"+id).remove();
 }
 
-// Oyuncuları göster
+// Oyuncuları göster ve atma butonu
 db.ref("players").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
-    html+=child.val().name+" - "+(child.val().score||0)+" puan<br>";
+    html+=child.val().name+" - "+(child.val().score||0)+
+      " <button onclick=\"removePlayer('"+child.key+"')\">At</button><br>";
   });
   document.getElementById("playersList").innerHTML=html;
 });
 
-// Kelime havuzu ekle
+// Oyuncu atma
+function removePlayer(id){
+  db.ref("players/"+id).remove();
+}
+
+// Kelime ekle
 function addWord(){
   var word=document.getElementById("wordInput").value.toUpperCase();
   var hint=document.getElementById("hintInput").value;
-  if(word==""||hint=="") return;
+  if(word=="" || hint=="") return;
   db.ref("words").push({word:word,hint:hint});
   document.getElementById("wordInput").value="";
   document.getElementById("hintInput").value="";
 }
 
-// Kelime havuzunu göster
+// Kelime havuzunu göster ve silme butonu
 db.ref("words").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
-    html+=child.val().word+" - "+child.val().hint+"<br>";
+    html+=child.val().word+" - "+child.val().hint+
+      " <button onclick=\"removeWord('"+child.key+"')\">Sil</button><br>";
   });
   document.getElementById("wordList").innerHTML=html;
 });
+
+// Kelime silme
+function removeWord(id){
+  db.ref("words/"+id).remove();
+}
 
 // Ayarları kaydet
 function saveSettings(){
@@ -248,7 +266,7 @@ function updateQualifiedDisplays(){
 }
 
 setInterval(updateQualifiedDisplays,2000);
-</script>
 
+</script>
 </body>
 </html>
