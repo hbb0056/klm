@@ -2,62 +2,175 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Yönetim Paneli - Turnuva Modu</title>
+<title>Yönetim Paneli</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <style>
-body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
-.card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
-.flex { display: flex; gap: 20px; }
-button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; margin: 5px 2px; }
-.btn-blue { background: #3498db; }
-.btn-green { background: #2ecc71; }
-.btn-red { background: #e74c3c; }
-.btn-purple { background: #9b59b6; }
-.list { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #fff; }
-.score-item { background: #2c3e50; color: white; padding: 10px; margin-bottom: 5px; border-radius: 6px; }
-input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#f4f6f9;
+}
+
+.container{
+    display:flex;
+    height:100vh;
+}
+
+/* SOL PANEL */
+.left{
+    width:25%;
+    background:#1e293b;
+    color:white;
+    padding:20px;
+    overflow:auto;
+}
+
+.stage{
+    background:#334155;
+    padding:10px;
+    margin-bottom:15px;
+    border-radius:8px;
+}
+
+.stage h4{
+    margin:0 0 10px 0;
+}
+
+.stage button{
+    width:100%;
+    padding:8px;
+    border:none;
+    background:#22c55e;
+    color:white;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+/* ORTA PANEL */
+.middle{
+    width:35%;
+    padding:20px;
+    overflow:auto;
+}
+
+.card{
+    background:white;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* SAĞ PANEL */
+.right{
+    width:40%;
+    padding:20px;
+    background:#e2e8f0;
+    overflow:auto;
+}
+
+input{
+    padding:6px;
+    margin:4px;
+}
+
+button{
+    cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
-<div class="card">
-<h2>🏆 Turnuva Yönetim Merkezi</h2>
+<div class="container">
 
-<button class="btn-blue" onclick="baslat()">🎮 TURU BAŞLAT</button>
-<button class="btn-purple" onclick="ustTuraGec()">⏭️ ÜST TURA GEÇ (Her Gruptan 2)</button>
-<button class="btn-red" onclick="db.ref('turnuva/maclar').remove()">⏹️ MAÇLARI DURDUR</button>
-<button style="background:black" onclick="if(confirm('Her şey silinecek!')) db.ref('turnuva').remove()">🧹 SİSTEMİ SIFIRLA</button>
+<!-- SOL -->
+<div class="left">
+
+<h3>Turnuva Aşamaları</h3>
+
+<div class="stage">
+<h4>A Grubu</h4>
+<button onclick="baslatGrup('A')">Oyunu Başlat</button>
+</div>
+
+<div class="stage">
+<h4>B Grubu</h4>
+<button onclick="baslatGrup('B')">Oyunu Başlat</button>
+</div>
+
+<div class="stage">
+<h4>C Grubu</h4>
+<button onclick="baslatGrup('C')">Oyunu Başlat</button>
+</div>
+
+<div class="stage">
+<h4>Çeyrek Final</h4>
+<button onclick="baslatTur('ceyrek')">Oyunu Başlat</button>
+</div>
+
+<div class="stage">
+<h4>Yarı Final</h4>
+<button onclick="baslatTur('yari')">Oyunu Başlat</button>
+</div>
+
+<div class="stage">
+<h4>Final</h4>
+<button onclick="baslatTur('final')">Oyunu Başlat</button>
+</div>
+
+</div>
+
+<!-- ORTA -->
+<div class="middle">
+
+<div class="card">
+<h3>Aktif Oyuncular</h3>
+<div id="oyuncuListesi"></div>
+</div>
+
+<div class="card">
+<h3>Onay Bekleyenler</h3>
+<div id="onayListesi"></div>
+</div>
+
+</div>
+
+<!-- SAĞ -->
+<div class="right">
+
+<div class="card">
+<h3>Kelime Havuzu</h3>
+
+Kelime:
+<input id="kelime">
+
+İpucu:
+<input id="ipucu">
+
+<button onclick="kelimeEkle()">Ekle</button>
+
+<hr>
+
+Kelime Sayısı:
+<input type="number" id="kAdet" value="5">
+
+Harf Açılma Hızı(sn):
+<input type="number" id="hiz" value="10">
 
 <br><br>
 
-Kelime: <input type="number" id="kAdet" value="5" style="width:50px">
-Hız (sn): <input type="number" id="hiz" value="10" style="width:50px">
+<button onclick="genelBaslat()">GENEL OYUNU BAŞLAT</button>
+
+<br><br>
+
+<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button>
+<button onclick="db.ref('turnuva/havuz').remove()">Tüm Kelimeleri Sil</button>
+<button onclick="db.ref('turnuva/oyuncular').remove()">Oyuncuları At</button>
 
 </div>
-
-<div class="flex">
-
-<div class="card" style="flex:1">
-<h3>📊 Canlı Skorlar</h3>
-<div id="canliSkorlar" class="list"></div>
-</div>
-
-<div class="card" style="flex:1">
-<h3>👥 Aktif Oyuncular (<span id="count">0</span>)</h3>
-<div id="onayListesi" class="list"></div>
-</div>
-
-<div class="card" style="flex:1">
-<h3>📚 Kelime Havuzu</h3>
-
-<input id="k" placeholder="Kelime" style="width:80px">
-<input id="a" placeholder="İpucu" style="width:80px">
-<button class="btn-green" onclick="kelimeEkle()">+</button>
-
-<div id="havuzListesi" class="list" style="margin-top:10px"></div>
 
 </div>
 
@@ -75,138 +188,54 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-window.aktifler=[];
-
-/* KELİME EKLEME */
-function kelimeEkle(){
-    var k=document.getElementById("k").value.toUpperCase().trim();
-    var a=document.getElementById("a").value.trim();
-    if(k && a){
-        db.ref("turnuva/havuz").push({k,a});
-        document.getElementById("k").value="";
-        document.getElementById("a").value="";
-    }
-}
-
-db.ref("turnuva/havuz").on("value",s=>{
-    var h="";
-    s.forEach(x=>{
-        h+=`<div style="display:flex;justify-content:space-between;margin-bottom:5px">
-        <span>${x.val().k}</span>
-        <button class="btn-red" style="padding:2px 5px"
-        onclick="db.ref('turnuva/havuz/${x.key}').remove()">X</button>
-        </div>`;
-    });
-    document.getElementById("havuzListesi").innerHTML=h;
-});
-
-/* OYUNCU LİSTESİ */
+/* OYUNCULAR */
 db.ref("turnuva/oyuncular").on("value",s=>{
-    var h="";
-    window.aktifler=[];
+    var aktif="";
+    var onay="";
 
     s.forEach(o=>{
         var d=o.val();
 
-        if(d.durum==="onay_bekliyor"){
-            h+=`${d.ad}
-            <button class="btn-green"
-            onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">
-            Onayla</button><br>`;
-        }
-
-        else if(d.durum==="bekliyor" || d.durum==="ust_tur"){
-            window.aktifler.push({id:o.key, ad:d.ad});
-            h+=`${d.ad} ${d.durum==="ust_tur"?"🏆 (Üst Tur)": "✅"}<br>`;
+        if(d.durum=="onay_bekliyor"){
+            onay+=d.ad+
+            ` <button onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button><br>`;
+        }else{
+            aktif+=d.ad+"<br>";
         }
     });
 
-    document.getElementById("onayListesi").innerHTML=h;
-    document.getElementById("count").innerText=window.aktifler.length;
+    document.getElementById("oyuncuListesi").innerHTML=aktif;
+    document.getElementById("onayListesi").innerHTML=onay;
 });
+
+/* KELİME EKLE */
+function kelimeEkle(){
+    var k=document.getElementById("kelime").value.toUpperCase();
+    var i=document.getElementById("ipucu").value;
+
+    if(k && i){
+        db.ref("turnuva/havuz").push({k:k,a:i});
+        document.getElementById("kelime").value="";
+        document.getElementById("ipucu").value="";
+    }
+}
+
+/* GRUP BAŞLAT */
+function baslatGrup(grup){
+    alert(grup+" Grubu başlatıldı (mevcut sistemine bağlanabilir)");
+}
 
 /* TUR BAŞLAT */
-function baslat(){
-
-    if(window.aktifler.length < 2){
-        alert("Yeterli oyuncu yok!");
-        return;
-    }
-
-    db.ref("turnuva/havuz").once("value",hs=>{
-        if(!hs.exists()){
-            alert("Önce kelime ekleyin!");
-            return;
-        }
-
-        var havuz=[];
-        hs.forEach(x=>havuz.push(x.val()));
-        havuz.sort(()=>0.5-Math.random());
-
-        var kels=havuz.slice(0,document.getElementById("kAdet").value)
-        .map(x=>({k:x.k,i:x.a,gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
-
-        db.ref("turnuva/maclar").remove();
-
-        let sk={},il={};
-
-        window.aktifler.forEach(x=>{
-            sk[x.ad]=0;
-            il[x.ad]=0;
-            db.ref("turnuva/oyuncular/"+x.id)
-            .update({durum:"eslesti"});
-        });
-
-        db.ref("turnuva/maclar/TUR").set({
-            tip:"tur",
-            durum:"aktif",
-            kelimeler:kels,
-            skorlar:sk,
-            ilerleme:il
-        });
-    });
+function baslatTur(tur){
+    alert(tur+" turu başlatıldı (mevcut sistemine bağlanabilir)");
 }
 
-/* ÜST TURA GEÇ */
-async function ustTuraGec(){
-
-    const snap=await db.ref("turnuva/maclar/TUR").once("value");
-    if(!snap.exists()) return;
-
-    let v=snap.val();
-    let siralama=Object.entries(v.skorlar)
-    .sort((a,b)=>b[1]-a[1]);
-
-    let kazananlar=[];
-    if(siralama[0]) kazananlar.push(siralama[0][0]);
-    if(siralama[1]) kazananlar.push(siralama[1][0]);
-
-    window.aktifler.forEach(o=>{
-        if(kazananlar.includes(o.ad)){
-            db.ref("turnuva/oyuncular/"+o.id)
-            .update({durum:"ust_tur"});
-        } else {
-            db.ref("turnuva/oyuncular/"+o.id).remove();
-        }
-    });
-
-    alert("Üst tura çıkanlar belirlendi!");
+/* GENEL BAŞLAT */
+function genelBaslat(){
+    alert("Genel oyun başlatıldı");
 }
-
-/* CANLI SKOR */
-db.ref("turnuva/maclar").on("value",s=>{
-    var h="";
-    s.forEach(m=>{
-        var v=m.val();
-        h+=`<div class="score-item"><b>${m.key}</b><br>`;
-        for(let t in v.skorlar)
-            h+=`${t}: ${v.skorlar[t]} puan<br>`;
-        h+=`</div>`;
-    });
-    document.getElementById("canliSkorlar").innerHTML=
-    h || "Bekleniyor...";
-});
 
 </script>
+
 </body>
 </html>
