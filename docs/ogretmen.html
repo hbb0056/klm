@@ -2,153 +2,126 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Başhakem Paneli</title>
+    <title>Yönetici Paneli</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .flex { display: flex; gap: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        button { cursor: pointer; padding: 10px; border: none; border-radius: 5px; font-weight: bold; margin: 2px; }
+        .btn-main { background: #e94560; color: white; font-size: 16px; width: 100%; margin-top: 10px; }
+        .btn-del { background: #ff4757; color: white; padding: 4px 8px; }
+        .btn-ok { background: #2ed573; color: white; }
+        .flex { display: flex; gap: 15px; }
         .col { flex: 1; }
-        button { cursor: pointer; padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; }
-        .btn-blue { background: #3498db; color: white; }
-        .btn-green { background: #2ecc71; color: white; }
-        .btn-red { background: #e74c3c; color: white; }
-        .list-box { max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; background: #fafafa; }
-        .item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; align-items: center; }
-        .score-box { background: #2c3e50; color: white; padding: 10px; border-radius: 8px; margin-top: 5px; }
+        .list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fff; }
+        .item { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px solid #eee; padding: 5px; }
+        .group-card { background: #2c3e50; color: white; padding: 10px; margin-top: 5px; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>👨‍🏫 Başhakem Kontrol Merkezi</h2>
+        <h2>🛠️ Oyun Kontrolü</h2>
         Mod: <select id="mod">
-            <option value="grup">🏆 Grup Aşaması (Otomatik)</option>
-            <option value="savas">🏰 Takım Savaşı (Kaptanlı)</option>
+            <option value="grup">🏆 Grup Aşaması (Otomatik Dağıt)</option>
+            <option value="savas">🏰 Takım Savaşı (Kaptan Seçmeli)</option>
             <option value="duello">⚔️ Düello (Teke Tek)</option>
         </select>
         | Kelime: <input type="number" id="kAdet" value="5" style="width:40px;">
         | Hız: <input type="number" id="hiz" value="10" style="width:40px;">
-        <button class="btn-blue" onclick="baslat()">🚀 BAŞLAT</button>
-        <button class="btn-red" onclick="durudur()">⏹️ OYUNU DURDUR</button>
-        <button class="btn-red" style="background:#000" onclick="sifirla()">🧹 SIFIRLA</button>
+        <button class="btn-main" onclick="baslat()">🚀 GRUPLARI OLUŞTUR VE OYUNU BAŞLAT</button>
+        <button onclick="db.ref('turnuva/maclar').remove()" style="background:#ffa500; color:white">⏹️ MAÇLARI DURDUR</button>
+        <button onclick="db.ref('turnuva').remove(); location.reload()" style="background:#000; color:white">🧹 SİSTEMİ SIFIRLA</button>
     </div>
 
     <div class="flex">
-        <div class="col card">
-            <h3>📊 Canlı Skor Tablosu</h3>
-            <div id="canliSkorlar" class="list-box">Oyun başladığında skorlar burada görünecek...</div>
-        </div>
-        <div class="col card">
-            <h3>👥 Onay Bekleyenler</h3>
-            <div id="onayListesi" class="list-box"></div>
+        <div class="col">
+            <div class="card">
+                <h3>📊 Canlı Gruplar & Skorlar</h3>
+                <div id="canliSkorlar" class="list"></div>
+            </div>
+            <div class="card">
+                <h3>👥 Onay Bekleyenler</h3>
+                <div id="onayListesi" class="list"></div>
+            </div>
         </div>
         <div class="col card">
             <h3>📚 Kelime Havuzu</h3>
             <input id="k" placeholder="Kelime"> <input id="a" placeholder="İpucu">
-            <button class="btn-green" onclick="ekle()">EKLE</button>
-            <div id="havuzListesi" class="list-box" style="margin-top:10px;"></div>
+            <button class="btn-ok" onclick="ekle()">EKLE</button>
+            <div id="havuzListesi" class="list" style="margin-top:10px;"></div>
         </div>
     </div>
 
     <script>
         var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
-        firebase.initializeApp(firebaseConfig);
-        var db = firebase.database();
+        firebase.initializeApp(firebaseConfig); var db = firebase.database();
 
         function ekle() {
             var k = document.getElementById("k").value.toUpperCase().trim(), a = document.getElementById("a").value.trim();
             if(k && a) db.ref("turnuva/havuz").push({k, a});
             document.getElementById("k").value=""; document.getElementById("a").value="";
         }
-
         db.ref("turnuva/havuz").on("value", s => {
-            var h = ""; s.forEach(x => { h += `<div class="item"><span><b>${x.val().k}</b></span> <button class="btn-red" onclick="db.ref('turnuva/havuz/${x.key}').remove()">SİL</button></div>`; });
+            var h = ""; s.forEach(x => { h += `<div class="item"><span>${x.val().k}</span> <button class="btn-del" onclick="db.ref('turnuva/havuz/${x.key}').remove()">SİL</button></div>`; });
             document.getElementById("havuzListesi").innerHTML = h;
         });
-
         db.ref("turnuva/oyuncular").on("value", s => {
             var h = ""; window.onaylilar = [];
             s.forEach(o => {
-                var d = o.val();
-                if(d.durum === "onay_bekliyor") h += `<div class="item">${d.ad} <button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button></div>`;
+                var d = o.val(); if(d.durum === "onay_bekliyor") h += `<div class="item">${d.ad} <button class="btn-ok" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button></div>`;
                 else { h += `<div class="item">${d.ad} ✅</div>`; window.onaylilar.push({id:o.key, ad:d.ad}); }
             });
             document.getElementById("onayListesi").innerHTML = h;
         });
-
-        // CANLI SKOR TAKİBİ
         db.ref("turnuva/maclar").on("value", s => {
-            var h = "";
-            s.forEach(m => {
-                var v = m.val();
-                h += `<div class="score-box"><b>${v.tip.toUpperCase()}</b><br>`;
-                if(v.tip === "savas" || v.tip === "grup") {
-                    for(let key in v.skorlar) { 
-                        let isim = (v.tip === "grup") ? "Oyuncu/Grup" : key;
-                        h += `${isim}: ${v.skorlar[key]} Puan | `;
-                    }
-                } else {
-                    h += `${v.p1_ad}: ${v.p1_skor} - ${v.p2_ad}: ${v.p2_skor}`;
-                }
+            var h = ""; s.forEach(m => {
+                var v = m.val(); h += `<div class="group-card"><b>${m.key.toUpperCase()}</b><br>`;
+                for(let k in v.skorlar) h += `<small>${k.substring(0,6)}: ${v.skorlar[k]} P | </small>`;
                 h += `</div>`;
             });
-            document.getElementById("canliSkorlar").innerHTML = h || "Aktif maç yok.";
+            document.getElementById("canliSkorlar").innerHTML = h || "Maç bekleniyor...";
         });
 
         function baslat() {
             var mod = document.getElementById("mod").value, kC = parseInt(document.getElementById("kAdet").value);
             db.ref("turnuva/havuz").once("value", hs => {
-                var havuz = []; hs.forEach(x => havuz.push(x.val()));
-                havuz = havuz.sort(() => 0.5 - Math.random());
-                var kels = havuz.slice(0, kC).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
-
+                var h = []; hs.forEach(x => h.push(x.val())); h = h.sort(() => 0.5 - Math.random());
+                var kels = h.slice(0, kC).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
+                let liste = window.onaylilar.sort(() => 0.5 - Math.random());
                 if(mod === "grup") {
-                    let liste = window.onaylilar.sort(() => 0.5 - Math.random());
-                    let grupSayisi = Math.ceil(liste.length / 4);
-                    for(let i=0; i < grupSayisi; i++) {
-                        let uyeler = liste.slice(i*4, (i*4)+4);
-                        let sk = {}; uyeler.forEach(u => { sk[u.id] = 0; db.ref("turnuva/oyuncular/"+u.id).update({durum:"eslesti"}); });
-                        db.ref("turnuva/maclar/grup_"+i).set({ tip:"grup", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:sk });
+                    for(let i=0; i < Math.ceil(liste.length/4); i++) {
+                        let u = liste.slice(i*4, (i*4)+4), sk = {};
+                        u.forEach(x => { sk[x.ad] = 0; db.ref("turnuva/oyuncular/"+x.id).update({durum:"eslesti", grupID:"Grup-"+(i+1)}); });
+                        db.ref("turnuva/maclar/Grup-"+(i+1)).set({ tip:"grup", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:sk });
                     }
                 } else if(mod === "savas") {
-                    db.ref("turnuva/maclar/savas_genel").set({ tip:"savas", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:{"SİSTEM":0} });
+                    db.ref("turnuva/maclar/Savas-Meydani").set({ tip:"savas", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:{"SİSTEM":0} });
                     window.onaylilar.forEach(o => db.ref("turnuva/oyuncular/"+o.id+"/durum").set("takim_secme_ekrani"));
-                } else if(mod === "duello") {
-                    let liste = window.onaylilar.sort(() => 0.5 - Math.random());
-                    for(let i=0; i<liste.length; i+=2) {
-                        if(liste[i+1]) {
-                            db.ref("turnuva/maclar/duel_"+i).set({ tip:"duello", durum:"aktif", p1:liste[i].id, p1_ad:liste[i].ad, p2:liste[i+1].id, p2_ad:liste[i+1].ad, p1_skor:0, p2_skor:0, aktifRaunt:0, kelimeler: kels });
-                            db.ref("turnuva/oyuncular/"+liste[i].id+"/durum").set("eslesti");
-                            db.ref("turnuva/oyuncular/"+liste[i+1].id+"/durum").set("eslesti");
-                        }
+                } else {
+                    for(let i=0; i<liste.length; i+=2) if(liste[i+1]) {
+                        db.ref("turnuva/maclar/Duel-"+i).set({ tip:"duello", durum:"aktif", p1:liste[i].id, p1_ad:liste[i].ad, p2:liste[i+1].id, p2_ad:liste[i+1].ad, p1_skor:0, p2_skor:0, aktifRaunt:0, kelimeler: kels });
+                        db.ref("turnuva/oyuncular/"+liste[i].id+"/durum").set("eslesti"); db.ref("turnuva/oyuncular/"+liste[i+1].id+"/durum").set("eslesti");
                     }
                 }
                 motorBaslat();
             });
         }
-
         function motorBaslat() {
-            var hiz = document.getElementById("hiz").value;
-            if(window.mtr) clearInterval(window.mtr);
+            var hz = document.getElementById("hiz").value; if(window.mtr) clearInterval(window.mtr);
             window.mtr = setInterval(() => {
-                db.ref("turnuva/maclar").once("value", s => {
-                    s.forEach(ms => {
-                        var m = ms.val(); if(m.durum === "aktif") {
-                            var r = m.aktifRaunt, g = m.kelimeler[r].gizli, k = m.kelimeler[r].k;
-                            var t = []; for(let i=0; i<g.length; i++) if(g[i]==="-") t.push(i);
-                            if(t.length > 1) {
-                                var sec = t[Math.floor(Math.random()*t.length)];
-                                var yeni = g.split(""); yeni[sec] = k[sec];
-                                db.ref(`turnuva/maclar/${ms.key}/kelimeler/${r}/gizli`).set(yeni.join(""));
-                            }
+                db.ref("turnuva/maclar").once("value", s => { s.forEach(ms => {
+                    var m = ms.val(); if(m.durum === "aktif") {
+                        var r = m.aktifRaunt, g = m.kelimeler[r].gizli, k = m.kelimeler[r].k;
+                        var t = []; for(let i=0; i<g.length; i++) if(g[i]==="-") t.push(i);
+                        if(t.length > 1) {
+                            var s = t[Math.floor(Math.random()*t.length)], y = g.split(""); y[s] = k[s];
+                            db.ref(`turnuva/maclar/${ms.key}/kelimeler/${r}/gizli`).set(y.join(""));
                         }
-                    });
-                });
-            }, hiz * 1000);
+                    }
+                }); });
+            }, hz * 1000);
         }
-        function durudur() { db.ref("turnuva/maclar").remove(); }
-        function sifirla() { db.ref("turnuva").remove(); location.reload(); }
     </script>
 </body>
 </html>
