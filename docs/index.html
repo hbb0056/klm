@@ -15,26 +15,23 @@
 </head>
 <body>
     <div class="box">
-        <h2 id="baslik">🏆 Kelime Avı</h2>
-        
+        <h2>🏆 Kelime Avı</h2>
         <div id="step1">
             <input id="ad" placeholder="Adınız Soyadınız">
-            <button onclick="kaydol()">DERSE KATIL</button>
+            <button onclick="kaydol()">KATIL</button>
         </div>
-
         <div id="step2" class="hidden">
             <p id="mesaj">⏳ Öğretmen onayı bekleniyor...</p>
         </div>
-
         <div id="stepTakim" class="hidden">
             <p style="color:#00d2ff">Takım Savaşı Başlıyor!</p>
             <select id="rolSec" onchange="rolDegis()">
-                <option value="oyuncu">Bir Takıma Katıl</option>
-                <option value="kaptan">Yeni Takım Kur (Kaptan)</option>
+                <option value="oyuncu">Takıma Katıl</option>
+                <option value="kaptan">Yeni Takım Kur</option>
             </select>
             <input id="yeniTakimAd" class="hidden" placeholder="Takım İsmi Yazın">
             <select id="hazirTakimlar"><option value="">Takım Seçin...</option></select>
-            <button onclick="takimTamamla()">TAKIMLA OYUNA GİR</button>
+            <button onclick="takimTamamla()">BAŞLA</button>
         </div>
     </div>
 
@@ -62,29 +59,22 @@
         db.ref("turnuva/oyuncular/" + myID).on("value", s => {
             if(!s.exists()) return;
             var d = s.val();
-            if(d.durum === "bekliyor") document.getElementById("mesaj").innerText = "✔️ Onaylandınız. Gruplandırma bekleniyor...";
-            
-            // Koşullu Yönlendirme
             if(d.durum === "takim_secme_ekrani") {
                 document.getElementById("step2").classList.add("hidden");
                 document.getElementById("stepTakim").classList.remove("hidden");
-                takimListesiGuncelle();
+                db.ref("turnuva/takim_isimleri").on("value", ts => {
+                    var sel = document.getElementById("hazirTakimlar");
+                    sel.innerHTML = '<option value="">Takım Seçin...</option>';
+                    ts.forEach(t => { sel.innerHTML += `<option value="${t.key}">${t.key}</option>`; });
+                });
             }
             if(d.durum === "eslesti") window.location.href = "oyun.html";
         });
 
-        function takimListesiGuncelle() {
-            db.ref("turnuva/takim_isimleri").on("value", ts => {
-                var sel = document.getElementById("hazirTakimlar");
-                sel.innerHTML = '<option value="">Takım Seçin...</option>';
-                ts.forEach(t => { sel.innerHTML += `<option value="${t.key}">${t.key}</option>`; });
-            });
-        }
-
         function takimTamamla() {
             var rol = document.getElementById("rolSec").value;
             var tAd = (rol === "kaptan") ? document.getElementById("yeniTakimAd").value.trim().toUpperCase() : document.getElementById("hazirTakimlar").value;
-            if(!tAd) return alert("Takım belirlenmedi!");
+            if(!tAd) return alert("Takım seçilmedi!");
             if(rol === "kaptan") db.ref("turnuva/takim_isimleri/" + tAd).set(true);
             db.ref("turnuva/oyuncular/" + myID).update({ takim: tAd, durum: "eslesti" });
         }
