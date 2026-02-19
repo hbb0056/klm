@@ -2,11 +2,11 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Paneli</title>
+    <title>Yönetim Merkezi</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .flex { display: flex; gap: 20px; }
         .col { flex: 1; }
@@ -14,30 +14,42 @@
         .btn-green { background: #27ae60; color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
+        .nav-bar { background: #16213e; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-radius: 0 0 15px 15px; }
         .list-box { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; background: #fafafa; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        h4 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-        .tag { padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; color: white; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        .ana-ozel { display: none; } /* Varsayılan gizli, JS ile açılacak */
     </style>
 </head>
 <body>
-    <h1>🏟️ Turnuva Yönetim Merkezi</h1>
+    <script>
+        var rol = sessionStorage.getItem("adminRole");
+        if(!rol) window.location.href = "login.html";
+    </script>
+
+    <div class="nav-bar">
+        <div id="rol-etiket" style="font-weight: bold; letter-spacing: 1px;"></div>
+        <div style="display: flex; gap: 10px;">
+            <button class="ana-ozel btn-blue" onclick="alert('Şifre değiştirme paneli yakında...')">Şifre Değiştir</button>
+            <button class="btn-red" onclick="sessionStorage.clear(); window.location.href='login.html';">Güvenli Çıkış</button>
+        </div>
+    </div>
 
     <div class="flex">
         <div class="col">
             <div class="card">
-                <h3>👥 Oyuncu Durumları</h3>
+                <h3>👥 Oyuncu Yönetimi</h3>
                 <div id="oyuncuListesi" class="list-box"></div>
             </div>
         </div>
 
         <div class="col">
             <div class="card">
-                <h3>📚 Kelime Havuzu</h3>
-                <div id="ihtiyac" style="padding:10px; margin-bottom:10px; border-radius:8px; font-weight:bold;">Hesaplanıyor...</div>
-                <div class="flex">
-                    <input id="k" placeholder="Kelime" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
-                    <input id="a" placeholder="İpucu" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                <h3>📚 Kelime Havuzu (Kalıcı)</h3>
+                <div id="ihtiyac" style="margin-bottom:10px; font-weight:bold;">Hesaplanıyor...</div>
+                <div style="display:flex; gap:5px;">
+                    <input id="k" placeholder="Kelime" style="flex:1;">
+                    <input id="a" placeholder="İpucu" style="flex:1;">
                     <button class="btn-green" onclick="ekle()">EKLE</button>
                 </div>
                 <div id="kelimeHavuzu" class="list-box"></div>
@@ -46,19 +58,30 @@
     </div>
 
     <div class="card">
-        <h3>⚙️ Turnuva Kontrolleri</h3>
-        <label>Harf İpucu Hızı (Saniye): </label>
-        <input type="number" id="sn" value="10" style="width:60px; padding:8px; border:1px solid #ddd; border-radius:5px;">
-        <button class="btn-blue" style="font-size:1.2em; padding:10px 30px;" onclick="baslat()">⚔️ TURU BAŞLAT</button>
-        <button class="btn-red" onclick="sifirla()">🧹 SİSTEMİ SIFIRLA</button>
+        <h3>⚙️ Turnuva & Harf Motoru</h3>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <span>Harf Hızı (sn):</span>
+            <input type="number" id="sn" value="10" style="width:50px;">
+            <button class="btn-blue" onclick="baslat()">⚔️ TURU BAŞLAT</button>
+            <button class="btn-red" onclick="maclariSifirla()">🏁 SADECE MAÇLARI TEMİZLE</button>
+            <button class="ana-ozel btn-red" style="background:#000;" onclick="herseyiSifirla()">🧹 HER ŞEYİ SİL (HAVUZ DAHİL)</button>
+        </div>
     </div>
 
     <div class="card">
-        <h3>📊 Canlı & Biten Maçlar</h3>
+        <h3>📊 Maç Takip</h3>
         <div id="macListesi"></div>
     </div>
 
     <script>
+        // Rol Bazlı Arayüz Ayarı
+        var role = sessionStorage.getItem("adminRole");
+        document.getElementById("rol-etiket").innerText = (role === "ANA") ? "👑 BAŞ YÖNETİCİ: HABİP" : "👨‍🏫 MİSAFİR YÖNETİCİ";
+        if(role === "ANA") {
+            var anaElemanlar = document.querySelectorAll(".ana-ozel");
+            anaElemanlar.forEach(el => el.style.display = "block");
+        }
+
         var firebaseConfig = {
             apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
             authDomain: "kelime-avi-bec9f.firebaseapp.com",
@@ -70,7 +93,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
-        var hInterval;
+        var motor;
 
         function ekle() {
             var k = document.getElementById("k").value.toUpperCase().trim();
@@ -80,46 +103,28 @@
         }
 
         db.ref("turnuva/havuz").on("value", s => {
-            var html = ""; window.havuzSayisi = s.numChildren();
-            s.forEach(h => {
-                html += `<div class="item"><span><b>${h.val().k}</b> - ${h.val().a}</span> <button class="btn-red" style="padding:4px" onclick="db.ref('turnuva/havuz/${h.key}').remove()">X</button></div>`;
-            });
+            var html = ""; window.hSayi = s.numChildren();
+            s.forEach(h => { html += `<div class="item"><span><b>${h.val().k}</b> - ${h.val().a}</span> <button class="btn-red" onclick="db.ref('turnuva/havuz/${h.key}').remove()">SİL</button></div>`; });
             document.getElementById("kelimeHavuzu").innerHTML = html || "Havuz boş.";
-            ihtiyacHesapla();
+            hesapla();
         });
 
         db.ref("turnuva/oyuncular").on("value", s => {
-            var onayHtml = "<h4>⏳ Onay Bekleyenler</h4>";
-            var ustHtml = "<h4>🚀 Üst Grup (Kazananlar/Aktif)</h4>";
-            var altHtml = "<h4>💀 Alt Grup (Elenenler)</h4>";
-            window.onayliCount = 0;
-
+            var onHTML = "<h4>Onay Bekleyenler</h4>";
+            var aktifHTML = "<h4>Aktif Yarışmacılar</h4>";
+            window.oSayi = 0;
             s.forEach(o => {
                 var d = o.val();
-                var item = `<div class="item"><span>${d.ad}</span>`;
-                if(d.durum === "onay_bekliyor") {
-                    onayHtml += item + `<button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">ONAYLA</button></div>`;
-                } else if(d.durum === "bekliyor" || d.durum === "eslesti") {
-                    window.onayliCount++;
-                    ustHtml += item + `<span class="tag" style="background:#2ecc71">AKTİF</span></div>`;
-                } else if(d.durum === "elendi") {
-                    altHtml += item + `<span class="tag" style="background:#e74c3c">ELENDİ</span></div>`;
-                }
+                if(d.durum === "onay_bekliyor") onHTML += `<div class="item">${d.ad} <button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">ONAYLA</button></div>`;
+                else if(d.durum === "bekliyor" || d.durum === "eslesti") { window.oSayi++; aktifHTML += `<div class="item">${d.ad} <span style="color:green">HAZIR</span></div>`; }
             });
-            document.getElementById("oyuncuListesi").innerHTML = onayHtml + ustHtml + altHtml;
-            ihtiyacHesapla();
+            document.getElementById("oyuncuListesi").innerHTML = onHTML + aktifHTML;
+            hesapla();
         });
 
-        function ihtiyacHesapla() {
-            var ger = Math.floor(window.onayliCount / 2) * 3;
-            var box = document.getElementById("ihtiyac");
-            if(window.havuzSayisi < ger) {
-                box.innerText = `⚠️ Kelime Eksik! Lazım: ${ger}, Mevcut: ${window.havuzSayisi}`;
-                box.style.background = "#fff3cd";
-            } else {
-                box.innerText = `✅ Hazır! ${window.onayliCount} oyuncu için ${window.havuzSayisi} kelime yeterli.`;
-                box.style.background = "#d4edda";
-            }
+        function hesapla() {
+            var ger = Math.floor(window.oSayi / 2) * 3;
+            document.getElementById("ihtiyac").innerText = `Onaylı Oyuncu: ${window.oSayi} | Gerekli Kelime: ${ger} | Mevcut Havuz: ${window.hSayi}`;
         }
 
         function baslat() {
@@ -127,62 +132,52 @@
                 var havuz = []; ts.child("havuz").forEach(h => { havuz.push(h.val()); });
                 havuz = havuz.sort(() => 0.5 - Math.random());
                 var bekleyenler = []; ts.child("oyuncular").forEach(o => { if(o.val().durum === "bekliyor") bekleyenler.push({id:o.key, ad:o.val().ad}); });
-
-                if(bekleyenler.length < 2) return alert("Eşleşecek yeterli oyuncu yok!");
-                if(havuz.length < Math.floor(bekleyenler.length/2)*3) return alert("Havuzdaki kelime sayısı yetersiz!");
-
-                var kIdx = 0;
+                if(bekleyenler.length < 2 || havuz.length < (Math.floor(bekleyenler.length/2)*3)) return alert("Yetersiz kelime veya oyuncu!");
+                
+                var idx = 0;
                 for(let i=0; i<bekleyenler.length; i+=2) {
                     if(bekleyenler[i+1]) {
                         var p1 = bekleyenler[i], p2 = bekleyenler[i+1];
-                        var mKelimeler = havuz.slice(kIdx, kIdx+3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
-                        kIdx += 3;
-                        db.ref("turnuva/maclar").push().set({
-                            p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad,
-                            kelimeler:mKelimeler, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:""
-                        });
+                        var mk = havuz.slice(idx, idx+3).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g, "-")}));
+                        idx += 3;
+                        db.ref("turnuva/maclar").push().set({ p1:p1.id, p2:p2.id, p1_ad:p1.ad, p2_ad:p2.ad, kelimeler:mk, aktifRaunt:0, p1_skor:0, p2_skor:0, durum:"aktif", winner:"" });
                         db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
                         db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
                     }
                 }
-                harfMotorunuBaslat();
+                motorBaslat();
             });
         }
 
-        function harfMotorunuBaslat() {
-            if(hInterval) clearInterval(hInterval);
-            var sn = document.getElementById("sn").value || 10;
-            hInterval = setInterval(() => {
+        function motorBaslat() {
+            if(motor) clearInterval(motor);
+            var s = document.getElementById("sn").value;
+            motor = setInterval(() => {
                 db.ref("turnuva/maclar").once("value", s => {
                     s.forEach(ms => {
                         var m = ms.val();
                         if(m.durum === "aktif") {
                             var r = m.aktifRaunt;
                             var g = m.kelimeler[r].gizli, k = m.kelimeler[r].k;
-                            var tireler = [];
-                            for(let i=0; i<g.length; i++) if(g[i]==="-") tireler.push(i);
-                            if(tireler.length > 1) {
-                                var sec = tireler[Math.floor(Math.random()*tireler.length)];
+                            var t = []; for(let i=0; i<g.length; i++) if(g[i]==="-") t.push(i);
+                            if(t.length > 1) {
+                                var sec = t[Math.floor(Math.random()*t.length)];
                                 var yeni = g.split(""); yeni[sec] = k[sec];
                                 db.ref(`turnuva/maclar/${ms.key}/kelimeler/${r}/gizli`).set(yeni.join(""));
                             }
                         }
                     });
                 });
-            }, sn * 1000);
+            }, s * 1000);
         }
 
         db.ref("turnuva/maclar").on("value", s => {
-            var aktifH = "<h4>🔥 Devam Edenler</h4>", bitenH = "<h4>🏁 Sonuçlar</h4>";
-            s.forEach(m => {
-                var v = m.val();
-                if(v.durum === "aktif") aktifH += `<div class="item">${v.p1_ad} vs ${v.p2_ad} [R:${v.aktifRaunt+1}]</div>`;
-                else bitenH += `<div class="item">🏆 ${v.winner===v.p1?v.p1_ad:v.p2_ad} kazandı (${v.p1_skor}-${v.p2_skor})</div>`;
-            });
-            document.getElementById("macListesi").innerHTML = aktifH + bitenH;
+            var h = ""; s.forEach(m => { var v = m.val(); h += `<div class="item"><b>${v.p1_ad} vs ${v.p2_ad}</b> [${v.durum}]</div>`; });
+            document.getElementById("macListesi").innerHTML = h;
         });
 
-        function sifirla() { if(confirm("Tüm turnuva ve oyuncular silinsin mi?")) { db.ref("turnuva").remove(); location.reload(); } }
+        function maclariSifirla() { db.ref("turnuva/maclar").remove(); db.ref("turnuva/oyuncular").remove(); }
+        function herseyiSifirla() { if(confirm("TÜM VERİLER silinecek?")) { db.ref("turnuva").remove(); location.reload(); } }
     </script>
 </body>
 </html>
