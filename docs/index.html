@@ -25,6 +25,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+// Firebase config
 var firebaseConfig = {
   apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
@@ -42,56 +43,59 @@ var playerId = null;
 var playerName = null;
 var guessed = false;
 
+// Katılımcı katılımı
 function joinGame(){
   playerName = document.getElementById("playerName").value;
+  if(playerName==""){ alert("Adınızı yazın"); return; }
 
-  if(playerName == ""){
-    alert("Adınızı yazın");
-    return;
-  }
-
-  db.ref("waitingPlayers").push({
-    name: playerName
-  });
-
-  document.getElementById("status").innerText = "Onay bekleniyor...";
+  db.ref("waitingPlayers").push({name:playerName});
+  document.getElementById("status").innerText="Onay bekleniyor...";
 }
 
+// Onaylandığında oyun ekranını göster
 db.ref("players").on("child_added", function(snapshot){
-  if(snapshot.val().name == playerName){
+  if(snapshot.val().name==playerName){
     playerId = snapshot.key;
     document.getElementById("login").style.display="none";
     document.getElementById("game").style.display="block";
   }
 });
 
+// Mevcut kelimeyi göster
 db.ref("game/current").on("value", function(snapshot){
   var data = snapshot.val();
   if(data){
-    document.getElementById("hint").innerText = "İpucu: " + data.hint;
-    document.getElementById("word").innerText = data.displayWord;
-    guessed = false;
+    document.getElementById("hint").innerText="İpucu: "+data.hint;
+    document.getElementById("word").innerText=data.displayWord;
+    guessed=false;
     document.getElementById("message").innerText="";
   }
 });
 
+// Tahmin gönderme
 function sendGuess(){
   if(guessed) return;
-
-  var guess = document.getElementById("guess").value.toUpperCase();
+  var guess=document.getElementById("guess").value.toUpperCase();
 
   db.ref("game/current").once("value", function(snapshot){
-    var data = snapshot.val();
-
-    if(guess == data.word.toUpperCase()){
-      var puan = 100 - (data.openedLetters * 10);
-      if(puan < 0) puan = 0;
+    var data=snapshot.val();
+    if(guess==data.word.toUpperCase()){
+      var puan=100-(data.openedLetters*10);
+      if(puan<0) puan=0;
 
       db.ref("players/"+playerId+"/score").once("value", function(snap){
-        var eski = snap.val() || 0;
-        db.ref("players/"+playerId).update({
-          score: eski + puan
-        });
+        var eski=snap.val()||0;
+        db.ref("players/"+playerId).update({score:eski+puan});
       });
 
-      document.get
+      document.getElementById("message").innerText="Doğru! +"+puan+" puan";
+    }else{
+      document.getElementById("message").innerText="Yanlış!";
+    }
+    guessed=true;
+  });
+}
+</script>
+
+</body>
+</html>
