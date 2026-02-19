@@ -51,8 +51,14 @@ Hız (sn): <input type="number" id="hiz" value="10" style="width:50px">
 </div>
 
 <div class="card" style="flex:1">
-<h3>🏅 Üst Tura Çıkanlar</h3>
-<div id="kazananListesi" class="list"></div>
+<h3>📚 Kelime Havuzu</h3>
+
+<input id="k" placeholder="Kelime" style="width:80px">
+<input id="a" placeholder="İpucu" style="width:80px">
+<button class="btn-green" onclick="kelimeEkle()">+</button>
+
+<div id="havuzListesi" class="list" style="margin-top:10px"></div>
+
 </div>
 
 </div>
@@ -69,7 +75,30 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-window.aktifler = [];
+window.aktifler=[];
+
+/* KELİME EKLEME */
+function kelimeEkle(){
+    var k=document.getElementById("k").value.toUpperCase().trim();
+    var a=document.getElementById("a").value.trim();
+    if(k && a){
+        db.ref("turnuva/havuz").push({k,a});
+        document.getElementById("k").value="";
+        document.getElementById("a").value="";
+    }
+}
+
+db.ref("turnuva/havuz").on("value",s=>{
+    var h="";
+    s.forEach(x=>{
+        h+=`<div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span>${x.val().k}</span>
+        <button class="btn-red" style="padding:2px 5px"
+        onclick="db.ref('turnuva/havuz/${x.key}').remove()">X</button>
+        </div>`;
+    });
+    document.getElementById("havuzListesi").innerHTML=h;
+});
 
 /* OYUNCU LİSTESİ */
 db.ref("turnuva/oyuncular").on("value",s=>{
@@ -117,14 +146,11 @@ function baslat(){
         var kels=havuz.slice(0,document.getElementById("kAdet").value)
         .map(x=>({k:x.k,i:x.a,gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
 
-        let oyuncular=[...window.aktifler];
-        oyuncular.sort(()=>0.5-Math.random());
-
         db.ref("turnuva/maclar").remove();
 
         let sk={},il={};
 
-        oyuncular.forEach(x=>{
+        window.aktifler.forEach(x=>{
             sk[x.ad]=0;
             il[x.ad]=0;
             db.ref("turnuva/oyuncular/"+x.id)
@@ -155,8 +181,6 @@ async function ustTuraGec(){
     if(siralama[0]) kazananlar.push(siralama[0][0]);
     if(siralama[1]) kazananlar.push(siralama[1][0]);
 
-    db.ref("turnuva/kazananlar").set(kazananlar);
-
     window.aktifler.forEach(o=>{
         if(kazananlar.includes(o.ad)){
             db.ref("turnuva/oyuncular/"+o.id)
@@ -168,16 +192,6 @@ async function ustTuraGec(){
 
     alert("Üst tura çıkanlar belirlendi!");
 }
-
-/* KAZANAN LİSTESİ */
-db.ref("turnuva/kazananlar").on("value",s=>{
-    var h="";
-    if(s.exists()){
-        s.forEach(k=>{ h+=`🥇 ${k.val()}<br>`; });
-    }
-    document.getElementById("kazananListesi").innerHTML=
-    h || "Henüz belirlenmedi";
-});
 
 /* CANLI SKOR */
 db.ref("turnuva/maclar").on("value",s=>{
