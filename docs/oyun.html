@@ -13,7 +13,7 @@
     </style>
 </head>
 <body>
-    <div class="bar"><div id="gAdi">-</div><div id="puan" style="color:#f1c40f">0</div></div>
+    <div class="bar"><div id="modAd">-</div><div id="skor" style="color:#f1c40f">Puan: 0</div></div>
     <div style="padding:20px;">
         <p id="ipucu" style="color:#00d2ff">İpucu...</p>
         <div id="kelime">-----</div><br>
@@ -24,24 +24,24 @@
         var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
-        var myID = localStorage.getItem("turnuva_id"), activeID = "", myGrup = "", myMod = "";
+        var myID = localStorage.getItem("turnuva_id"), myTeam = "", activeID = "";
 
-        db.ref("turnuva/oyuncular/" + myID).once("value", s => { 
-            myGrup = s.val().grup || "Bireysel";
-            document.getElementById("gAdi").innerText = myGrup;
-        });
+        db.ref("turnuva/oyuncular/" + myID).once("value", s => { if(s.exists()) myTeam = s.val().takim || "Bireysel"; });
 
         db.ref("turnuva/maclar").on("value", s => {
             s.forEach(m => {
                 var v = m.val();
-                var katildi = (v.tip !== "duello") || (v.p1 === myID || v.p2 === myID);
+                var katildi = (v.tip === "savas") || (v.tip === "grup" && v.skorlar && v.skorlar.hasOwnProperty(myID)) || (v.p1 === myID || v.p2 === myID);
                 if(katildi && v.durum === "aktif") {
-                    activeID = m.key; myMod = v.tip;
+                    activeID = m.key;
                     document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
                     document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-                    if(myMod === "duello") document.getElementById("puan").innerText = "Skor: " + (v.p1 === myID ? v.p1_skor : v.p2_skor);
-                    else if(myMod === "savas") document.getElementById("puan").innerText = "Takım Puanı: " + (v.skorlar[myGrup] || 0);
-                    else document.getElementById("puan").innerText = "Grup Puanın: " + (v.skorlar[myID] || 0);
+                    document.getElementById("modAd").innerText = v.tip.toUpperCase();
+                    var p = 0;
+                    if(v.tip==="savas") p = v.skorlar[myTeam] || 0;
+                    else if(v.tip==="grup") p = v.skorlar[myID] || 0;
+                    else p = (v.p1 === myID ? v.p1_skor : v.p2_skor);
+                    document.getElementById("skor").innerText = "Puan: " + p;
                 }
             });
         });
@@ -50,15 +50,13 @@
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             document.getElementById("tahmin").value = "";
             if(!t || !activeID) return;
-
             db.ref("turnuva/maclar/" + activeID).transaction(mac => {
                 if(!mac) return mac;
                 var r = mac.aktifRaunt;
                 if(t === mac.kelimeler[r].k) {
-                    if(mac.tip === "savas") { mac.skorlar[myGrup] = (mac.skorlar[myGrup]||0) + 1; }
-                    else if(mac.tip === "grup") { mac.skorlar[myID] = (mac.skorlar[myID]||0) + 1; }
-                    else { (mac.p1 === myID) ? mac.p1_skor++ : mac.p2_skor++; }
-                    
+                    if(mac.tip === "savas") { if(!mac.skorlar) mac.skorlar={}; mac.skorlar[myTeam] = (mac.skorlar[myTeam]||0)+1; }
+                    else if(mac.tip === "grup") mac.skorlar[myID]++;
+                    else (mac.p1 === myID ? mac.p1_skor++ : mac.p2_skor++);
                     if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++; else mac.durum = "bitti";
                 }
                 return mac;
