@@ -2,72 +2,62 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Grup Savaşı!</title>
+    <title>Yarışma Alanı</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #0f3460; color: white; }
-        .header { background: #16213e; padding: 20px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 20px; }
-        .main { margin-top: 50px; }
-        #kelime { font-size: 45px; letter-spacing: 12px; font-family: monospace; background: #1a1a2e; padding: 20px; border-radius: 15px; display: inline-block; margin: 20px 0; }
-        input { padding: 15px; font-size: 22px; width: 300px; border-radius: 10px; border: none; text-align: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f3460; color: white; text-align: center; margin: 0; }
+        .top-bar { background: #16213e; padding: 15px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 18px; }
+        .main { padding: 30px; }
+        #kelime { font-size: 45px; letter-spacing: 12px; background: #1a1a2e; padding: 20px; border-radius: 15px; border: 2px solid #535c68; display: inline-block; margin: 20px 0; }
+        input { padding: 15px; font-size: 20px; border-radius: 10px; border: none; width: 80%; max-width: 300px; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div id="benimTakim">Takım: -</div>
-        <div id="takimSkor" style="color:#f1c40f">Puan: 0</div>
+    <div class="top-bar">
+        <div>TAKIM: <span id="tAd" style="color:#00d2ff">-</span></div>
+        <div>SKOR: <span id="tPuan" style="color:#f1c40f">0</span></div>
     </div>
-
     <div class="main">
-        <p>İpucu: <span id="ipucu" style="color:#00d2ff">...</span></p>
+        <p id="ipucu">İpucu bekleniyor...</p>
         <div id="kelime">-----</div><br>
-        <input id="tahmin" placeholder="Hızlı yaz!" onkeypress="if(event.key === 'Enter') gonder()">
+        <input id="tahmin" placeholder="Cevabı yazın..." onkeypress="if(event.key === 'Enter') gonder()">
     </div>
-
     <script>
         var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
-        var myID = localStorage.getItem("turnuva_id");
-        var myTeam = "";
+        var myID = localStorage.getItem("turnuva_id"), myTeam = "", activeID = "";
 
-        db.ref("turnuva/oyuncular/" + myID).once("value", s => { 
-            myTeam = s.val().takim; 
-            document.getElementById("benimTakim").innerText = "Takım: " + myTeam;
-        });
+        db.ref("turnuva/oyuncular/" + myID).once("value", s => { if(s.exists()){ myTeam = s.val().takim; document.getElementById("tAd").innerText = myTeam; }});
 
-        db.ref("turnuva/maclar/grup_savasi_1").on("value", s => {
-            if(s.exists()) {
-                var v = s.val();
-                document.getElementById("takimSkor").innerText = "Puan: " + (v.skorlar[myTeam] || 0);
-                document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
-                document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-            }
+        db.ref("turnuva/maclar").on("value", s => {
+            s.forEach(m => {
+                var v = m.val();
+                var ok = (v.tip==="savas")? true : (v.p1===myID || v.p2===myID);
+                if(ok && v.durum==="aktif") {
+                    activeID = m.key;
+                    document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
+                    document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
+                    document.getElementById("tPuan").innerText = (v.tip==="savas")? (v.skorlar[myTeam]||0) : (v.p1===myID?v.p1_skor:v.p2_skor);
+                }
+            });
         });
 
         function gonder() {
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             document.getElementById("tahmin").value = "";
-            
-            db.ref("turnuva/maclar/grup_savasi_1").transaction(mac => {
-                if(mac && mac.durum === "aktif") {
+            if(!t || !activeID) return;
+            db.ref("turnuva/maclar/" + activeID).transaction(mac => {
+                if(mac && mac.durum==="aktif") {
                     if(t === mac.kelimeler[mac.aktifRaunt].k) {
-                        mac.skorlar[myTeam] = (mac.skorlar[myTeam] || 0) + 1;
-                        if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++;
-                        else mac.durum = "bitti";
+                        if(mac.tip==="savas") mac.skorlar[myTeam]++; else (mac.p1===myID?mac.p1_skor++:mac.p2_skor++);
+                        if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++; else mac.durum = "bitti";
                     }
-                }
-                return mac;
+                } return mac;
             });
         }
-
-        db.ref("turnuva/maclar/grup_savasi_1/durum").on("value", s => {
-            if(s.val() === "bitti") {
-                alert("Savaş Bitti! Sonuçları öğretmenin ekranından gör.");
-                window.location.href = "index.html";
-            }
-        });
+        db.ref("turnuva/maclar").on("child_changed", s => { if(s.key === activeID && s.val().durum === "bitti") { alert("Bitti!"); window.location.href="index.html"; }});
     </script>
 </body>
 </html>
