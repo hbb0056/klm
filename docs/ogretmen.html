@@ -26,10 +26,10 @@ input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
 <div class="card">
 <h2>🏆 Turnuva Yönetim Merkezi</h2>
 
-<button class="btn-blue" onclick="baslat()">1️⃣ GRUP AŞAMASINI BAŞLAT</button>
-<button class="btn-purple" onclick="ustTuraGec()">2️⃣ ÜST TURA GEÇ (Her Gruptan İlk 2)</button>
+<button class="btn-blue" onclick="baslat()">🎮 TURU BAŞLAT</button>
+<button class="btn-purple" onclick="ustTuraGec()">⏭️ ÜST TURA GEÇ (Her Gruptan 2)</button>
 <button class="btn-red" onclick="db.ref('turnuva/maclar').remove()">⏹️ MAÇLARI DURDUR</button>
-<button style="background:black" onclick="if(confirm('Her şey sıfırlanacak!')) db.ref('turnuva').remove()">🧹 SİSTEMİ SIFIRLA</button>
+<button style="background:black" onclick="if(confirm('Her şey silinecek!')) db.ref('turnuva').remove()">🧹 SİSTEMİ SIFIRLA</button>
 
 <br><br>
 
@@ -46,7 +46,7 @@ Hız (sn): <input type="number" id="hiz" value="10" style="width:50px">
 </div>
 
 <div class="card" style="flex:1">
-<h3>👥 Onaylı Öğrenciler (<span id="count">0</span>)</h3>
+<h3>👥 Aktif Oyuncular (<span id="count">0</span>)</h3>
 <div id="onayListesi" class="list"></div>
 </div>
 
@@ -57,18 +57,10 @@ Hız (sn): <input type="number" id="hiz" value="10" style="width:50px">
 
 </div>
 
-<div class="card">
-<h3>📚 Kelime Havuzu</h3>
-<input id="k" placeholder="Kelime" style="width:80px">
-<input id="a" placeholder="İpucu" style="width:80px">
-<button class="btn-green" onclick="kelimeEkle()">+</button>
-<div id="havuzListesi" class="list" style="margin-top:10px"></div>
-</div>
-
 <script>
 
 var firebaseConfig = {
-    apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
+    apiKey: "AIzaSy...",
     authDomain: "kelime-avi-bec9f.firebaseapp.com",
     databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
     projectId: "kelime-avi-bec9f"
@@ -77,54 +69,38 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-window.onaylilar = [];
+window.aktifler = [];
 
-/* KELİME HAVUZU */
-function kelimeEkle(){
-    var k=document.getElementById("k").value.toUpperCase().trim();
-    var a=document.getElementById("a").value.trim();
-    if(k && a) db.ref("turnuva/havuz").push({k,a});
-    document.getElementById("k").value="";
-    document.getElementById("a").value="";
-}
-
-db.ref("turnuva/havuz").on("value",s=>{
-    var h="";
-    s.forEach(x=>{
-        h+=`<div style="display:flex;justify-content:space-between">
-        ${x.val().k}
-        <button class="btn-red" style="padding:2px 5px"
-        onclick="db.ref('turnuva/havuz/${x.key}').remove()">X</button>
-        </div>`;
-    });
-    document.getElementById("havuzListesi").innerHTML=h;
-});
-
-/* ÖĞRENCİ LİSTESİ */
+/* OYUNCU LİSTESİ */
 db.ref("turnuva/oyuncular").on("value",s=>{
     var h="";
-    window.onaylilar=[];
+    window.aktifler=[];
+
     s.forEach(o=>{
         var d=o.val();
+
         if(d.durum==="onay_bekliyor"){
             h+=`${d.ad}
             <button class="btn-green"
             onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">
             Onayla</button><br>`;
-        } else {
-            window.onaylilar.push({id:o.key, ad:d.ad});
-            h+=`${d.ad} ✅<br>`;
+        }
+
+        else if(d.durum==="bekliyor" || d.durum==="ust_tur"){
+            window.aktifler.push({id:o.key, ad:d.ad});
+            h+=`${d.ad} ${d.durum==="ust_tur"?"🏆 (Üst Tur)": "✅"}<br>`;
         }
     });
+
     document.getElementById("onayListesi").innerHTML=h;
-    document.getElementById("count").innerText=window.onaylilar.length;
+    document.getElementById("count").innerText=window.aktifler.length;
 });
 
-/* GRUP BAŞLAT */
+/* TUR BAŞLAT */
 function baslat(){
 
-    if(window.onaylilar.length < 3){
-        alert("Grup oluşturmak için en az 3 öğrenci gerekli!");
+    if(window.aktifler.length < 2){
+        alert("Yeterli oyuncu yok!");
         return;
     }
 
@@ -141,105 +117,52 @@ function baslat(){
         var kels=havuz.slice(0,document.getElementById("kAdet").value)
         .map(x=>({k:x.k,i:x.a,gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
 
-        let oyuncular=[...window.onaylilar];
+        let oyuncular=[...window.aktifler];
         oyuncular.sort(()=>0.5-Math.random());
-
-        let gruplar=[];
-        let n=oyuncular.length;
-
-        let grupSayisi=Math.ceil(n/4);
-        let temelBoyut=Math.floor(n/grupSayisi);
-        let fazla=n%grupSayisi;
-
-        let index=0;
-        for(let i=0;i<grupSayisi;i++){
-            let boyut=temelBoyut+(fazla>0?1:0);
-            if(fazla>0) fazla--;
-
-            gruplar.push(oyuncular.slice(index,index+boyut));
-            index+=boyut;
-        }
 
         db.ref("turnuva/maclar").remove();
 
-        gruplar.forEach((grup,i)=>{
-            let sk={},il={};
-            grup.forEach(x=>{
-                sk[x.ad]=0;
-                il[x.ad]=0;
-                db.ref("turnuva/oyuncular/"+x.id)
-                .update({durum:"eslesti",takim:"Grup-"+(i+1)});
-            });
+        let sk={},il={};
 
-            db.ref("turnuva/maclar/Grup-"+(i+1)).set({
-                tip:"grup",
-                durum:"aktif",
-                kelimeler:kels,
-                skorlar:sk,
-                ilerleme:il
-            });
+        oyuncular.forEach(x=>{
+            sk[x.ad]=0;
+            il[x.ad]=0;
+            db.ref("turnuva/oyuncular/"+x.id)
+            .update({durum:"eslesti"});
         });
 
-        motor();
-        alert("Gruplar oluşturuldu!");
+        db.ref("turnuva/maclar/TUR").set({
+            tip:"tur",
+            durum:"aktif",
+            kelimeler:kels,
+            skorlar:sk,
+            ilerleme:il
+        });
     });
-}
-
-/* HARF MOTORU */
-function motor(){
-    var hz=document.getElementById("hiz").value;
-    if(window.mtr) clearInterval(window.mtr);
-
-    window.mtr=setInterval(()=>{
-        db.ref("turnuva/maclar").once("value",s=>{
-            s.forEach(ms=>{
-                var m=ms.val();
-                if(m.durum==="aktif"){
-                    m.kelimeler.forEach((kel,idx)=>{
-                        var t=[];
-                        for(let i=0;i<kel.gizli.length;i++)
-                            if(kel.gizli[i]==="-") t.push(i);
-
-                        if(t.length>1){
-                            var sIndex=t[Math.floor(Math.random()*t.length)];
-                            var yeni=kel.gizli.split("");
-                            yeni[sIndex]=kel.k[sIndex];
-                            db.ref(`turnuva/maclar/${ms.key}/kelimeler/${idx}/gizli`)
-                            .set(yeni.join(""));
-                        }
-                    });
-                }
-            });
-        });
-    },hz*1000);
 }
 
 /* ÜST TURA GEÇ */
 async function ustTuraGec(){
 
-    if(!confirm("Her gruptan ilk 2 üst tura çıkacak. Devam?")) return;
+    const snap=await db.ref("turnuva/maclar/TUR").once("value");
+    if(!snap.exists()) return;
 
-    const snap=await db.ref("turnuva/maclar").once("value");
+    let v=snap.val();
+    let siralama=Object.entries(v.skorlar)
+    .sort((a,b)=>b[1]-a[1]);
 
     let kazananlar=[];
-
-    snap.forEach(m=>{
-        let v=m.val();
-        let siralama=Object.entries(v.skorlar)
-        .sort((a,b)=>b[1]-a[1]);
-
-        if(siralama[0]) kazananlar.push(siralama[0][0]);
-        if(siralama[1]) kazananlar.push(siralama[1][0]);
-    });
+    if(siralama[0]) kazananlar.push(siralama[0][0]);
+    if(siralama[1]) kazananlar.push(siralama[1][0]);
 
     db.ref("turnuva/kazananlar").set(kazananlar);
 
-    window.onaylilar.forEach(o=>{
-        if(!kazananlar.includes(o.ad)){
-            db.ref("turnuva/oyuncular/"+o.id).remove();
-        } else {
+    window.aktifler.forEach(o=>{
+        if(kazananlar.includes(o.ad)){
             db.ref("turnuva/oyuncular/"+o.id)
-            .update({durum:"bekliyor"});
+            .update({durum:"ust_tur"});
+        } else {
+            db.ref("turnuva/oyuncular/"+o.id).remove();
         }
     });
 
