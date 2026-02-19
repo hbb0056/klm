@@ -5,19 +5,23 @@
 </head>
 <body>
 
-<h2>Yönetici Paneli</h2>
+<h2>Admin Panel</h2>
 
 <h3>Onay Bekleyenler</h3>
 <div id="waitingList"></div>
 
-<h3>Yeni Soru</h3>
-<input type="text" id="hintInput" placeholder="İpucu">
+<h3>Kelime Havuzu</h3>
 <input type="text" id="wordInput" placeholder="Kelime">
-<input type="number" id="letterTime" placeholder="Harf Açılma Süresi (sn)">
-<button onclick="startQuestion()">Soruyu Başlat</button>
+<input type="text" id="hintInput" placeholder="İpucu">
+<button onclick="addWord()">Ekle</button>
+<div id="wordList"></div>
 
-<h3>Oyuncular</h3>
-<div id="playersList"></div>
+<h3>Ayarlar</h3>
+<label>Her aşamada kaç kelime sorulsun?</label>
+<input type="number" id="wordsPerRound" value="3">
+<label>Harf açılma süresi (sn)</label>
+<input type="number" id="letterTime" value="2">
+<button onclick="saveSettings()">Kaydet</button>
 
 <h3>Gruplar Oluştur</h3>
 <input type="number" id="groupCount" placeholder="Kaç Grup?">
@@ -30,7 +34,15 @@
 <button onclick="createSemiFinal()">Yarı Final Oluştur</button>
 <button onclick="createFinal()">Final Oluştur</button>
 <button onclick="declareChampion()">Şampiyonu Belirle</button>
+
+<h3>Eşleşmeler</h3>
 <div id="matchesList"></div>
+
+<h3>Üst Turda Kimler Var?</h3>
+<div id="quarterPlayers"></div>
+<div id="semiPlayers"></div>
+<div id="finalPlayers"></div>
+
 <div id="championDiv"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -50,55 +62,55 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
+// Waiting list
 db.ref("waitingPlayers").on("child_added", function(snapshot){
   var data = snapshot.val();
   var id = snapshot.key;
   document.getElementById("waitingList").innerHTML +=
-    data.name +
-    " <button onclick=\"approve('" + id + "','" + data.name + "')\">Onayla</button><br>";
+    data.name+" <button onclick=\"approve('"+id+"','"+data.name+"')\">Onayla</button><br>";
 });
 
 function approve(id,name){
-  db.ref("players").push({ name: name, score: 0 });
+  db.ref("players").push({name:name,score:0});
   db.ref("waitingPlayers/"+id).remove();
 }
 
+// Oyuncuları göster
 db.ref("players").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
-    html += child.val().name + " - " + (child.val().score || 0) + " puan<br>";
+    html+=child.val().name+" - "+(child.val().score||0)+" puan<br>";
   });
-  document.getElementById("playersList").innerHTML = html;
+  document.getElementById("playersList").innerHTML=html;
 });
 
-var interval;
-function startQuestion(){
-  var hint = document.getElementById("hintInput").value;
-  var word = document.getElementById("wordInput").value.toUpperCase();
-  var time = document.getElementById("letterTime").value * 1000;
-  var hidden = "_ ".repeat(word.length);
-
-  db.ref("game/current").set({
-    hint: hint,
-    word: word,
-    displayWord: hidden,
-    openedLetters: 0
-  });
-
-  var opened = 0;
-  clearInterval(interval);
-  interval = setInterval(function(){
-    opened++;
-    var display="";
-    for(var i=0;i<word.length;i++){
-      display += (i<opened ? word[i] : "_") + " ";
-    }
-    db.ref("game/current").update({ displayWord: display, openedLetters: opened });
-    if(opened >= word.length) clearInterval(interval);
-  }, time);
+// Kelime havuzu ekle
+function addWord(){
+  var word=document.getElementById("wordInput").value.toUpperCase();
+  var hint=document.getElementById("hintInput").value;
+  if(word==""||hint=="") return;
+  db.ref("words").push({word:word,hint:hint});
+  document.getElementById("wordInput").value="";
+  document.getElementById("hintInput").value="";
 }
 
-// Shuffle fonksiyonu
+// Kelime havuzunu göster
+db.ref("words").on("value", function(snapshot){
+  var html="";
+  snapshot.forEach(function(child){
+    html+=child.val().word+" - "+child.val().hint+"<br>";
+  });
+  document.getElementById("wordList").innerHTML=html;
+});
+
+// Ayarları kaydet
+function saveSettings(){
+  var words=parseInt(document.getElementById("wordsPerRound").value);
+  var letterTime=parseInt(document.getElementById("letterTime").value);
+  db.ref("settings").set({wordsPerRound:words,letterTime:letterTime});
+}
+
+// Shuffle
 function shuffle(array){
   for(let i=array.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
@@ -107,26 +119,27 @@ function shuffle(array){
   return array;
 }
 
-// Grupları oluştur
+// Grupları kur
 function createGroups(){
-  var groupCount = parseInt(document.getElementById("groupCount").value);
+  var groupCount=parseInt(document.getElementById("groupCount").value);
   db.ref("players").once("value", function(snapshot){
     var players=[];
-    snapshot.forEach(function(child){ players.push({id:child.key,name:child.val().name,score:child.val().score}); });
-    players = shuffle(players);
-
+    snapshot.forEach(function(child){
+      players.push({id:child.key,name:child.val().name,score:child.val().score});
+    });
+    players=shuffle(players);
     var groups={};
     for(let i=0;i<groupCount;i++) groups[String.fromCharCode(65+i)]=[];
     for(let i=0;i<players.length;i++){
-      var groupKey = Object.keys(groups)[i % groupCount];
-      groups[groupKey].push(players[i]);
+      var g=Object.keys(groups)[i%groupCount];
+      groups[g].push(players[i]);
     }
     db.ref("groups").set(groups);
     db.ref("stage").set("group");
   });
 }
 
-// Grupları ekranda göster
+// Grupları göster
 db.ref("groups").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(group){
@@ -134,7 +147,7 @@ db.ref("groups").on("value", function(snapshot){
     group.forEach(function(player){ html+=player.val().name+"<br>"; });
     html+="<br>";
   });
-  document.getElementById("groupsList").innerHTML = html;
+  document.getElementById("groupsList").innerHTML=html;
 });
 
 // Grup kazananlarını seç
@@ -153,7 +166,7 @@ function calculateGroupWinners(){
   });
 }
 
-// Çeyrek final oluştur
+// Çeyrek Final
 function createQuarterFinal(){
   db.ref("qualified").once("value", function(snapshot){
     var players=snapshot.val();
@@ -167,7 +180,7 @@ function createQuarterFinal(){
   });
 }
 
-// Yarı final oluştur
+// Yarı Final
 function createSemiFinal(){
   db.ref("quarterFinal").once("value", function(snapshot){
     var winners=[];
@@ -184,7 +197,7 @@ function createSemiFinal(){
   });
 }
 
-// Final oluştur
+// Final
 function createFinal(){
   db.ref("semiFinal").once("value", function(snapshot){
     var winners=[];
@@ -196,43 +209,46 @@ function createFinal(){
   });
 }
 
-// Şampiyonu belirle
+// Şampiyon
 function declareChampion(){
   db.ref("final").once("value", function(snapshot){
-    var finalMatch=snapshot.val();
-    if(finalMatch.winner){
-      db.ref("champion").set(finalMatch.winner);
+    var f=snapshot.val();
+    if(f.winner){
+      db.ref("champion").set(f.winner);
       db.ref("stage").set("finished");
     }
   });
 }
 
-// Eşleşmeleri ekranda göster
-db.ref("quarterFinal").on("value", function(snapshot){
-  var html="Çeyrek Final<br>";
-  if(snapshot.val()) snapshot.forEach(function(match){
-    html+=match.val().player1.name+" vs "+match.val().player2.name+"<br>";
+// Üst turları göster
+function updateQualifiedDisplays(){
+  db.ref("quarterFinal").once("value", function(snapshot){
+    var html="";
+    if(snapshot.val()) snapshot.forEach(function(match){
+      if(match.val().winner) html+=match.val().winner.name+"<br>";
+    });
+    document.getElementById("quarterPlayers").innerHTML=html;
   });
-  document.getElementById("matchesList").innerHTML=html;
-});
-
-db.ref("semiFinal").on("value", function(snapshot){
-  var html="Yarı Final<br>";
-  if(snapshot.val()) snapshot.forEach(function(match){
-    html+=match.val().player1.name+" vs "+match.val().player2.name+"<br>";
+  db.ref("semiFinal").once("value", function(snapshot){
+    var html="";
+    if(snapshot.val()) snapshot.forEach(function(match){
+      if(match.val().winner) html+=match.val().winner.name+"<br>";
+    });
+    document.getElementById("semiPlayers").innerHTML=html;
   });
-  document.getElementById("matchesList").innerHTML+=html;
-});
+  db.ref("final").once("value", function(snapshot){
+    var f=snapshot.val();
+    if(f){
+      var html="";
+      if(f.player1) html+=f.player1.name+"<br>";
+      if(f.player2) html+=f.player2.name+"<br>";
+      document.getElementById("finalPlayers").innerHTML=html;
+    }
+  });
+}
 
-db.ref("final").on("value", function(snapshot){
-  var finalMatch=snapshot.val();
-  if(finalMatch) document.getElementById("matchesList").innerHTML+="Final: "+finalMatch.player1.name+" vs "+finalMatch.player2.name+"<br>";
-});
-
-db.ref("champion").on("value", function(snapshot){
-  if(snapshot.val()) document.getElementById("championDiv").innerHTML="<h3>Şampiyon: "+snapshot.val().name+"</h3>";
-});
-
+setInterval(updateQualifiedDisplays,2000);
 </script>
+
 </body>
 </html>
