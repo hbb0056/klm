@@ -7,157 +7,47 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #1a1a2e; 
-            color: white; 
-            text-align: center; 
-            padding: 20px; 
-            margin: 0; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        .box { 
-            background: #16213e; 
-            padding: 40px 30px; 
-            border-radius: 20px; 
-            width: 100%;
-            max-width: 400px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 2px solid #e94560; 
-        }
-        h2 { color: #e94560; margin-bottom: 25px; font-size: 2rem; }
-        input { 
-            width: 100%; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 10px; 
-            border: none; 
-            font-size: 16px; 
-            box-sizing: border-box;
-            background: #0f3460;
-            color: white;
-            outline: none;
-        }
-        input::placeholder { color: #888; }
-        button { 
-            width: 100%; 
-            padding: 15px; 
-            background: #e94560; 
-            color: white; 
-            border: none; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 18px; 
-            transition: 0.3s;
-            margin-top: 10px;
-        }
-        button:hover { background: #c62a48; transform: translateY(-2px); }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; text-align: center; padding: 20px; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { background: #16213e; padding: 30px; border-radius: 20px; width: 100%; max-width: 350px; border: 2px solid #e94560; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; background: #0f3460; color: white; }
+        button { width: 100%; padding: 12px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
         .hidden { display: none; }
-        .loader {
-            border: 4px solid #0f3460;
-            border-top: 4px solid #e94560;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #beklemeIcerik p { font-size: 1.1rem; line-height: 1.6; color: #00d2ff; }
     </style>
 </head>
 <body>
     <div class="box">
         <h2>🏆 Kelime Avı</h2>
-        
         <div id="step1">
-            <p>Yarışmaya katılmak için adınızı yazın:</p>
             <input id="ad" placeholder="Adınız Soyadınız" autocomplete="off">
-            <button onclick="kaydol()">TURNUVAYA KATIL</button>
+            <button onclick="kaydol()">KATIL</button>
         </div>
-        
         <div id="step2" class="hidden">
-            <div id="beklemeIcerik">
-                <div class="loader"></div>
-                <p id="mesaj">Sisteme başarıyla kaydedildiniz.<br><b>Öğretmen onayı bekleniyor...</b></p>
-                <small style="opacity: 0.6;">Hocanız yeni turu başlattığında otomatik olarak yarışma alanına yönlendirileceksiniz.</small>
-            </div>
+            <p>⏳ <b>Kaydınız Alındı!</b><br><br>Hocanız sizi onayladığında veya yeni tur başladığında oyun otomatik açılacaktır.</p>
         </div>
     </div>
 
     <script>
-        // Firebase Yapılandırması
-        var firebaseConfig = { 
-            apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", 
-            authDomain: "kelime-avi-bec9f.firebaseapp.com", 
-            databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", 
-            projectId: "kelime-avi-bec9f", 
-            storageBucket: "kelime-avi-bec9f.appspot.com", 
-            messagingSenderId: "154681825331", 
-            appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" 
-        };
+        var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
+        var myID = localStorage.getItem("turnuva_id") || db.ref("turnuva/oyuncular").push().key;
+        localStorage.setItem("turnuva_id", myID);
 
-        // Yerel depolamadan kullanıcı ID'sini al veya yeni oluştur
-        var myID = localStorage.getItem("turnuva_id");
-        if (!myID) {
-            myID = db.ref("turnuva/oyuncular").push().key;
-            localStorage.setItem("turnuva_id", myID);
-        }
-
-        // Kayıt Fonksiyonu
         function kaydol() {
             var ad = document.getElementById("ad").value.trim();
-            if(!ad) {
-                alert("Lütfen isminizi boş bırakmayın!");
-                return;
-            }
-            // Firebase'e kaydet
-            db.ref("turnuva/oyuncular/" + myID).set({
-                ad: ad,
-                durum: "onay_bekliyor",
-                puan: 0
-            });
-            
-            ekranGuncelle(true);
+            if(!ad) return alert("İsim yazın!");
+            db.ref("turnuva/oyuncular/" + myID).set({ ad: ad, durum: "onay_bekliyor" });
+            document.getElementById("step1").classList.add("hidden");
+            document.getElementById("step2").classList.remove("hidden");
         }
 
-        // Ekranlar arası geçiş
-        function ekranGuncelle(isWaiting) {
-            if(isWaiting) {
-                document.getElementById("step1").classList.add("hidden");
-                document.getElementById("step2").classList.remove("hidden");
-            } else {
-                document.getElementById("step1").classList.remove("hidden");
-                document.getElementById("step2").classList.add("hidden");
-            }
-        }
-
-        // Firebase Dinleyici: Durum Değişikliklerini İzle
         db.ref("turnuva/oyuncular/" + myID).on("value", s => {
             if(!s.exists()) {
-                // Eğer oyuncu veritabanından silindiyse (elenme durumu)
-                ekranGuncelle(false);
+                document.getElementById("step1").classList.remove("hidden");
+                document.getElementById("step2").classList.add("hidden");
                 return;
             }
-            
-            var d = s.val();
-            
-            // Eğer hoca onay verdiyse bekleme mesajını güncelle
-            if(d.durum === "bekliyor") {
-                ekranGuncelle(true);
-                document.getElementById("mesaj").innerHTML = "<b>Onaylandınız!</b><br>Turun başlaması bekleniyor...";
-            }
-            
-            // Eğer eşleşme yapıldıysa oyuna gönder
-            if(d.durum === "eslesti") {
-                window.location.href = "oyun.html";
-            }
+            if(s.val().durum === "eslesti") window.location.href = "oyun.html";
         });
     </script>
 </body>
