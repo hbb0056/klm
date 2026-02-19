@@ -2,55 +2,69 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Giriş ve Takım Seçimi</title>
+    <title>Yarışma Katılım</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding-top: 50px; background: #1a1a2e; color: white; }
-        .box { background: #16213e; padding: 30px; display: inline-block; border-radius: 20px; width: 320px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; text-align: center; padding: 20px; }
+        .box { background: #16213e; padding: 30px; border-radius: 20px; width: 350px; display: inline-block; border: 1px solid #e94560; }
         input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        #status { margin-top: 20px; color: #00d2ff; }
+        .tab { display: flex; margin-bottom: 15px; }
+        .tab button { background: #0f3460; border-radius: 0; font-size: 12px; }
+        .tab button.active { background: #e94560; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h2>🏆 Yarışmaya Katıl</h2>
-        <div id="form">
-            <input id="ad" placeholder="Adınız Soyadınız">
-            <p style="font-size: 14px; margin-bottom: 5px;">Takımınızı Seçin:</p>
-            <select id="takim">
-                <option value="Takım A">🔴 Takım A</option>
-                <option value="Takım B">🔵 Takım B</option>
-                <option value="Takım C">🟢 Takım C</option>
-                <option value="Takım D">🟡 Takım D</option>
-            </select>
-            <button onclick="kaydol()">KATIL</button>
+        <h2>🏆 Yarışma Kaydı</h2>
+        <div class="tab">
+            <button id="btnKaptan" class="active" onclick="setRole('kaptan')">KAPTANIM</button>
+            <button id="btnOyuncu" onclick="setRole('oyuncu')">OYUNCUYUM</button>
         </div>
-        <p id="status">Onay bekleniyor...</p>
+        <input id="ad" placeholder="Adınız Soyadınız">
+        <div id="kaptanAlani">
+            <input id="yeniTakim" placeholder="Kurulacak Takım Adı">
+        </div>
+        <div id="oyuncuAlani" style="display:none">
+            <select id="takimListesi"><option value="">Takım Seçiniz...</option></select>
+        </div>
+        <button onclick="kaydol()">KATIL</button>
+        <p id="status" style="color:#00d2ff; margin-top:15px;"></p>
     </div>
-
     <script>
         var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
-        var id = localStorage.getItem("turnuva_id") || db.ref("turnuva/oyuncular").push().key;
-        localStorage.setItem("turnuva_id", id);
+        var role = 'kaptan';
+        var myID = localStorage.getItem("turnuva_id") || db.ref("turnuva/oyuncular").push().key;
+        localStorage.setItem("turnuva_id", myID);
+
+        function setRole(r) {
+            role = r;
+            document.getElementById("btnKaptan").className = r==='kaptan'?'active':'';
+            document.getElementById("btnOyuncu").className = r==='oyuncu'?'active':'';
+            document.getElementById("kaptanAlani").style.display = r==='kaptan'?'block':'none';
+            document.getElementById("oyuncuAlani").style.display = r==='oyuncu'?'block':'none';
+        }
+
+        db.ref("turnuva/takimlar").on("value", s => {
+            var select = document.getElementById("takimListesi");
+            select.innerHTML = '<option value="">Takım Seçiniz...</option>';
+            s.forEach(t => { select.innerHTML += `<option value="${t.key}">${t.key}</option>`; });
+        });
 
         function kaydol() {
             var ad = document.getElementById("ad").value.trim();
-            var takim = document.getElementById("takim").value;
-            if(!ad) return alert("İsim yazın!");
-            db.ref("turnuva/oyuncular/" + id).set({ ad: ad, takim: takim, durum: "onay_bekliyor" });
-            document.getElementById("form").style.display = "none";
-            document.getElementById("status").innerText = "⏳ Öğretmen onayı bekleniyor...";
+            var takim = (role === 'kaptan') ? document.getElementById("yeniTakim").value.trim().toUpperCase() : document.getElementById("takimListesi").value;
+            if(!ad || !takim) return alert("Eksik bilgi!");
+            if(role === 'kaptan') db.ref("turnuva/takimlar/" + takim).set(true);
+            db.ref("turnuva/oyuncular/" + myID).set({ ad: ad, takim: takim, durum: "onay_bekliyor" });
+            alert("Kayıt yapıldı, onay bekleyin.");
         }
 
-        db.ref("turnuva/oyuncular/" + id).on("value", s => {
-            if(s.exists()){
-                if(s.val().durum === "bekliyor") document.getElementById("status").innerText = "✔️ Onaylandınız! Takım savaşı başlıyor...";
-                if(s.val().durum === "eslesti") window.location.href = "oyun.html";
-            }
+        db.ref("turnuva/oyuncular/" + myID).on("value", s => {
+            if(s.exists() && s.val().durum === "eslesti") window.location.href = "oyun.html";
         });
     </script>
 </body>
