@@ -8,30 +8,33 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; text-align: center; padding: 20px; }
         .box { background: #16213e; padding: 30px; border-radius: 20px; width: 350px; display: inline-block; border: 1px solid #e94560; }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h2>🏆 Kelime Avı</h2>
+        <h2 id="baslik">🏆 Kelime Avı</h2>
+        
         <div id="step1">
             <input id="ad" placeholder="Adınız Soyadınız">
-            <button onclick="kaydol()">KATIL</button>
+            <button onclick="kaydol()">DERSE KATIL</button>
         </div>
+
         <div id="step2" class="hidden">
-            <p id="mesaj">⏳ Onay bekleniyor...</p>
+            <p id="mesaj">⏳ Öğretmen onayı bekleniyor...</p>
         </div>
-        <div id="step3" class="hidden">
-            <p id="modMesaj">Takımını Belirle!</p>
+
+        <div id="stepTakim" class="hidden">
+            <p style="color:#00d2ff">Takım Savaşı Başlıyor!</p>
             <select id="rolSec" onchange="rolDegis()">
-                <option value="oyuncu">Var Olan Gruba/Takıma Katıl</option>
-                <option value="kaptan">Yeni Grup/Takım Kur (Kaptan)</option>
+                <option value="oyuncu">Bir Takıma Katıl</option>
+                <option value="kaptan">Yeni Takım Kur (Kaptan)</option>
             </select>
-            <input id="yeniAd" class="hidden" placeholder="İsim Yazın (Örn: Grup A)">
-            <select id="hazirListe"><option value="">Seçiniz...</option></select>
-            <button onclick="tamamla()">OYUNA GİR</button>
+            <input id="yeniTakimAd" class="hidden" placeholder="Takım İsmi Yazın">
+            <select id="hazirTakimlar"><option value="">Takım Seçin...</option></select>
+            <button onclick="takimTamamla()">TAKIMLA OYUNA GİR</button>
         </div>
     </div>
 
@@ -52,36 +55,38 @@
 
         function rolDegis() {
             var rol = document.getElementById("rolSec").value;
-            document.getElementById("yeniAd").className = (rol === "kaptan") ? "" : "hidden";
-            document.getElementById("hazirListe").className = (rol === "oyuncu") ? "" : "hidden";
+            document.getElementById("yeniTakimAd").className = (rol === "kaptan") ? "" : "hidden";
+            document.getElementById("hazirTakimlar").className = (rol === "oyuncu") ? "" : "hidden";
         }
 
         db.ref("turnuva/oyuncular/" + myID).on("value", s => {
             if(!s.exists()) return;
             var d = s.val();
-            if(d.durum === "bekliyor") document.getElementById("mesaj").innerText = "✔️ Onaylandınız. Mod seçimi bekleniyor...";
-            if(d.durum === "secim_yap") {
+            if(d.durum === "bekliyor") document.getElementById("mesaj").innerText = "✔️ Onaylandınız. Gruplandırma bekleniyor...";
+            
+            // Koşullu Yönlendirme
+            if(d.durum === "takim_secme_ekrani") {
                 document.getElementById("step2").classList.add("hidden");
-                document.getElementById("step3").classList.remove("hidden");
-                listeGuncelle();
+                document.getElementById("stepTakim").classList.remove("hidden");
+                takimListesiGuncelle();
             }
             if(d.durum === "eslesti") window.location.href = "oyun.html";
         });
 
-        function listeGuncelle() {
-            db.ref("turnuva/gruplar").on("value", ts => {
-                var sel = document.getElementById("hazirListe");
-                sel.innerHTML = '<option value="">Seçiniz...</option>';
+        function takimListesiGuncelle() {
+            db.ref("turnuva/takim_isimleri").on("value", ts => {
+                var sel = document.getElementById("hazirTakimlar");
+                sel.innerHTML = '<option value="">Takım Seçin...</option>';
                 ts.forEach(t => { sel.innerHTML += `<option value="${t.key}">${t.key}</option>`; });
             });
         }
 
-        function tamamla() {
+        function takimTamamla() {
             var rol = document.getElementById("rolSec").value;
-            var ad = (rol === "kaptan") ? document.getElementById("yeniAd").value.trim().toUpperCase() : document.getElementById("hazirListe").value;
-            if(!ad) return alert("Seçim yapın!");
-            if(rol === "kaptan") db.ref("turnuva/gruplar/" + ad).set(true);
-            db.ref("turnuva/oyuncular/" + myID).update({ grup: ad, durum: "eslesti" });
+            var tAd = (rol === "kaptan") ? document.getElementById("yeniTakimAd").value.trim().toUpperCase() : document.getElementById("hazirTakimlar").value;
+            if(!tAd) return alert("Takım belirlenmedi!");
+            if(rol === "kaptan") db.ref("turnuva/takim_isimleri/" + tAd).set(true);
+            db.ref("turnuva/oyuncular/" + myID).update({ takim: tAd, durum: "eslesti" });
         }
     </script>
 </body>
