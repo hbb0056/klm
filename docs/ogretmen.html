@@ -6,44 +6,44 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .flex { display: flex; gap: 20px; }
         .col { flex: 1; }
-        button { cursor: pointer; padding: 10px; border-radius: 6px; border: none; font-weight: bold; }
-        .btn-green { background: #27ae60; color: white; }
+        button { cursor: pointer; padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; }
         .btn-blue { background: #3498db; color: white; }
+        .btn-green { background: #2ecc71; color: white; }
         .btn-red { background: #e74c3c; color: white; }
-        .list-box { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
-        .item { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px solid #eee; padding: 5px; }
+        .list-box { max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; background: #fafafa; }
+        .item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; align-items: center; }
+        input { padding: 8px; border-radius: 5px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>🎮 Turnuva Kontrol Merkezi</h2>
+        <h2>👨‍🏫 Başhakem Paneli</h2>
         <div style="background:#dfe6e9; padding:15px; border-radius:10px;">
-            Mod: <select id="mod"><option value="duello">Düello</option><option value="grup">Grup Aşaması</option><option value="savas">Takım Savaşı</option></select>
-            | Kelime: <input type="number" id="kAdet" value="5" style="width:40px;">
-            | Hız: <input type="number" id="hiz" value="10" style="width:40px;">
-            <button class="btn-blue" onclick="baslat()">🚀 BAŞLAT</button>
-            <button class="btn-red" onclick="db.ref('turnuva/maclar').remove()">Maçları Sil</button>
-            <button class="btn-red" style="background:black" onclick="if(confirm('Her şey silinsin mi?')) db.ref('turnuva').remove()">Sıfırla</button>
+            Mod: <select id="mod"><option value="duello">Düello (Teke Tek)</option><option value="savas">Takım Savaşı (Grup)</option></select>
+            | Kelime: <input type="number" id="kAdet" value="5" style="width:45px;">
+            | Hız: <input type="number" id="hiz" value="10" style="width:45px;">
+            <button class="btn-blue" onclick="baslat()">🚀 YARIŞMAYI BAŞLAT</button>
+            <button class="btn-red" onclick="sifirla()">🧹 Temizle</button>
         </div>
     </div>
+
     <div class="flex">
         <div class="col card">
-            <h3>👥 Bekleyenler</h3>
+            <h3>👥 Katılımcı Onayı</h3>
             <div id="onayListesi" class="list-box"></div>
         </div>
         <div class="col card">
-            <h3>📊 Puan Havuzu</h3>
-            <div id="skorListesi" class="list-box"></div>
+            <h3>📚 Kelime Havuzu</h3>
+            <div style="margin-bottom:10px;">
+                <input id="k" placeholder="Kelime"> <input id="a" placeholder="İpucu">
+                <button class="btn-green" onclick="ekle()">EKLE</button>
+            </div>
+            <div id="havuzListesi" class="list-box"></div>
         </div>
-    </div>
-    <div class="card">
-        <h3>📚 Kelime Ekle</h3>
-        <input id="k" placeholder="Kelime"> <input id="a" placeholder="İpucu">
-        <button class="btn-green" onclick="ekle()">EKLE</button>
     </div>
 
     <script>
@@ -52,38 +52,59 @@
         var db = firebase.database();
 
         function ekle() {
-            var k=document.getElementById("k").value.toUpperCase().trim(), a=document.getElementById("a").value.trim();
+            var k = document.getElementById("k").value.toUpperCase().trim();
+            var a = document.getElementById("a").value.trim();
             if(k && a) db.ref("turnuva/havuz").push({k, a});
             document.getElementById("k").value=""; document.getElementById("a").value="";
         }
 
+        // KELİMELERİ GÖSTERME
+        db.ref("turnuva/havuz").on("value", s => {
+            var html = "";
+            s.forEach(x => {
+                html += `<div class="item"><span><b>${x.val().k}</b> - ${x.val().a}</span> <button class="btn-red" style="padding:2px 8px" onclick="db.ref('turnuva/havuz/${x.key}').remove()">X</button></div>`;
+            });
+            document.getElementById("havuzListesi").innerHTML = html || "Havuz boş.";
+        });
+
+        // OYUNCU ONAYI
         db.ref("turnuva/oyuncular").on("value", s => {
-            var html = ""; window.liste = [];
+            var html = ""; window.onayliListe = [];
             s.forEach(o => {
                 var d = o.val();
-                if(d.durum === "onay_bekliyor") html += `<div class="item">${d.ad} (${d.takim}) <button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button></div>`;
-                else if(d.durum === "bekliyor") window.liste.push({id:o.key, ad:d.ad, takim:d.takim});
+                if(d.durum === "onay_bekliyor") {
+                    html += `<div class="item">${d.ad} <button class="btn-green" onclick="db.ref('turnuva/oyuncular/${o.key}/durum').set('bekliyor')">Onayla</button></div>`;
+                } else if(d.durum === "bekliyor" || d.durum === "takim_sec") {
+                    window.onayliListe.push({id:o.key, ad:d.ad});
+                    html += `<div class="item">${d.ad} <span style="color:green">✅ Onaylı</span></div>`;
+                }
             });
-            document.getElementById("onayListesi").innerHTML = html;
+            document.getElementById("onayListesi").innerHTML = html || "Katılımcı yok.";
         });
 
         function baslat() {
-            var m = document.getElementById("mod").value, kC = parseInt(document.getElementById("kAdet").value);
+            var mod = document.getElementById("mod").value;
+            var kC = parseInt(document.getElementById("kAdet").value);
+            
             db.ref("turnuva/havuz").once("value", hs => {
                 var h = []; hs.forEach(x => h.push(x.val()));
                 h = h.sort(() => 0.5 - Math.random());
-                if(m === "savas") {
-                    var sk = {}; window.liste.forEach(o => sk[o.takim] = 0);
-                    db.ref("turnuva/maclar/savas").set({ tip:"savas", durum:"aktif", aktifRaunt:0, kelimeler: h.slice(0, kC).map(x=>({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")})), skorlar: sk });
-                } else if(m === "duello") {
-                    for(let i=0; i<window.liste.length; i+=2) {
-                        if(window.liste[i+1]) {
-                            var p1=window.liste[i], p2=window.liste[i+1];
-                            db.ref("turnuva/maclar").push().set({ tip:"duello", durum:"aktif", p1:p1.id, p1_ad:p1.ad, p2:p2.id, p2_ad:p2.ad, p1_skor:0, p2_skor:0, aktifRaunt:0, kelimeler: h.slice(0, kC).map(x=>({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")})) });
+                var kelimeler = h.slice(0, kC).map(x => ({k:x.k, i:x.a, gizli:x.k.replace(/[A-ZÇĞİÖŞÜ]/g,"-")}));
+
+                if(mod === "savas") {
+                    db.ref("turnuva/maclar/savas").set({ tip:"savas", durum:"aktif", aktifRaunt:0, kelimeler: kelimeler, skorlar: { "SİSTEM":0 } });
+                    // Oyunculara "Takım Seç" komutu gönder
+                    window.onayliListe.forEach(o => db.ref("turnuva/oyuncular/"+o.id+"/durum").set("takim_sec"));
+                } else {
+                    for(let i=0; i<window.onayliListe.length; i+=2) {
+                        if(window.onayliListe[i+1]) {
+                            var p1=window.onayliListe[i], p2=window.onayliListe[i+1];
+                            db.ref("turnuva/maclar").push().set({ tip:"duello", durum:"aktif", p1:p1.id, p1_ad:p1.ad, p2:p2.id, p2_ad:p2.ad, p1_skor:0, p2_skor:0, aktifRaunt:0, kelimeler: kelimeler });
+                            db.ref("turnuva/oyuncular/"+p1.id+"/durum").set("eslesti");
+                            db.ref("turnuva/oyuncular/"+p2.id+"/durum").set("eslesti");
                         }
                     }
                 }
-                db.ref("turnuva/oyuncular").once("value", s => { s.forEach(o => { if(o.val().durum === "bekliyor") db.ref("turnuva/oyuncular/"+o.key+"/durum").set("eslesti"); }); });
                 motorBaslat();
             });
         }
@@ -107,6 +128,7 @@
                 });
             }, s * 1000);
         }
+        function sifirla() { db.ref("turnuva/maclar").remove(); db.ref("turnuva/takimlar").remove(); db.ref("turnuva/oyuncular").remove(); }
     </script>
 </body>
 </html>
