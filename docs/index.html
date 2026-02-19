@@ -2,21 +2,194 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Kelime Avı</title>
-<link rel="stylesheet" href="style.css">
+<title>Kelime Avı - Oyuncu</title>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<script src="app.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#0f172a;
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    max-width:400px;
+    margin:auto;
+}
+input{
+    padding:10px;
+    width:90%;
+    margin:10px 0;
+}
+button{
+    padding:10px 15px;
+    border:none;
+    border-radius:6px;
+    background:#22c55e;
+    color:white;
+    cursor:pointer;
+}
+#harfAlani{
+    font-size:30px;
+    letter-spacing:8px;
+    margin:20px 0;
+}
+</style>
 </head>
+
 <body>
 
-<div class="container">
-<div class="card">
-<h2>Admin Giriş</h2>
-<input type="password" id="sifre" placeholder="Şifre">
-<button onclick="adminGiris()">Giriş</button>
-</div>
+<div class="card" id="girisEkran">
+<h2>Turnuvaya Katıl</h2>
+<input id="isim" placeholder="İsminizi girin">
+<button onclick="katil()">Katıl</button>
 </div>
 
+<div class="card" id="oyunEkran" style="display:none;">
+<h3 id="grupBilgi"></h3>
+<h2 id="sure"></h2>
+<div id="harfAlani"></div>
+<input id="cevap" placeholder="Cevap">
+<button onclick="cevapKontrol()">Gönder</button>
+<h3>Skor: <span id="skor">0</span></h3>
+</div>
+
+<script>
+
+// ================= FIREBASE =================
+var firebaseConfig = {
+  apiKey: "API_KEY",
+  authDomain: "PROJECT.firebaseapp.com",
+  databaseURL: "https://PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PROJECT"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+// ================= GLOBAL =================
+var oyuncuID = localStorage.getItem("oyuncuID");
+var aktifKelime = "";
+var skor = 0;
+var timer;
+var kalanSure = 60;
+
+// ================= KATIL =================
+function katil(){
+
+    var isim = document.getElementById("isim").value;
+
+    if(!isim){
+        alert("İsim giriniz");
+        return;
+    }
+
+    var yeniRef = db.ref("turnuva/oyuncular").push({
+        ad: isim,
+        puan: 0,
+        grup: ""
+    });
+
+    oyuncuID = yeniRef.key;
+    localStorage.setItem("oyuncuID", oyuncuID);
+
+    alert("Katıldınız!");
+}
+
+// ================= OYUNCUYU DİNLE =================
+if(oyuncuID){
+
+    document.getElementById("girisEkran").style.display="none";
+    document.getElementById("oyunEkran").style.display="block";
+
+    db.ref("turnuva/oyuncular/"+oyuncuID).on("value", snap=>{
+        var val = snap.val();
+        if(val && val.grup){
+            document.getElementById("grupBilgi").innerText="Grubunuz: "+val.grup;
+        }
+    });
+
+    db.ref("turnuva/aktifMac").on("value", snap=>{
+        if(snap.exists()){
+            oyunuBaslat();
+        }
+    });
+}
+
+// ================= OYUN BAŞLAT =================
+function oyunuBaslat(){
+
+    db.ref("turnuva/havuz").once("value").then(snap=>{
+
+        var kelimeler=[];
+        snap.forEach(w=>{
+            kelimeler.push(w.val().kelime);
+        });
+
+        if(kelimeler.length==0){
+            alert("Kelime yok!");
+            return;
+        }
+
+        kelimeler.sort(()=>0.5-Math.random());
+
+        aktifKelime = kelimeler[0];
+        harfGizle();
+
+        kalanSure=60;
+        skor=0;
+        document.getElementById("skor").innerText=0;
+
+        timer=setInterval(()=>{
+            kalanSure--;
+            document.getElementById("sure").innerText="Süre: "+kalanSure;
+
+            if(kalanSure<=0){
+                clearInterval(timer);
+                macBitir();
+            }
+
+        },1000);
+    });
+}
+
+// ================= HARF GİZLE =================
+function harfGizle(){
+    var gizli="";
+    for(var i=0;i<aktifKelime.length;i++){
+        gizli+="_ ";
+    }
+    document.getElementById("harfAlani").innerText=gizli;
+}
+
+// ================= CEVAP =================
+function cevapKontrol(){
+
+    var cevap=document.getElementById("cevap").value.toUpperCase();
+
+    if(cevap===aktifKelime){
+        skor++;
+        document.getElementById("skor").innerText=skor;
+
+        db.ref("turnuva/oyuncular/"+oyuncuID)
+        .update({puan:skor});
+    }
+
+    document.getElementById("cevap").value="";
+}
+
+// ================= MAÇ BİTİR =================
+function macBitir(){
+    alert("Süre doldu! Skor: "+skor);
+}
+
+</script>
 </body>
 </html>
