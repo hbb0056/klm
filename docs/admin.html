@@ -3,33 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <title>Admin Panel</title>
-<link rel="stylesheet" href="style.css">
+
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<script src="app.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Segoe UI;
+    background:#0f172a;
+    color:white;
+    padding:30px;
+}
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:6px;
+    background:#22c55e;
+    color:white;
+    cursor:pointer;
+}
+.player{
+    background:#334155;
+    padding:8px;
+    margin:5px 0;
+    border-radius:6px;
+}
+</style>
 </head>
+
 <body>
 
-<div class="container">
+<h1>Admin Panel</h1>
 
 <div class="card">
-<h3>Oyuncu Ekle</h3>
-<input id="oyuncu">
-<button onclick="oyuncuEkle()">Ekle</button>
-</div>
-
-<div class="card">
-<h3>Kelime Ekle</h3>
-<input id="kelime" placeholder="Kelime">
-<input id="ipucu" placeholder="İpucu">
-<button onclick="kelimeEkle()">Ekle</button>
+<h3>Kayıtlı Oyuncular</h3>
+<div id="oyuncuListesi"></div>
 </div>
 
 <div class="card">
-<button onclick="gruplariOlustur()">Grupları Oluştur</button>
-<button onclick="oyunuBaslat()">Oyunu Aç</button>
+<button onclick="tumunuSil()">Tüm Oyuncuları Sil</button>
 </div>
 
-</div>
+<script>
+
+// FIREBASE CONFIG (AYNI OLMALI)
+var firebaseConfig = {
+  apiKey: "API_KEY_BURAYA",
+  authDomain: "kelime-avi-bec9f.firebaseapp.com",
+  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com/",
+  projectId: "kelime-avi-bec9f",
+  storageBucket: "kelime-avi-bec9f.appspot.com",
+  messagingSenderId: "MESSAGING_ID_BURAYA",
+  appId: "APP_ID_BURAYA"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+// Oyuncuları canlı dinle
+db.ref("turnuva/oyuncular").on("value", function(snapshot){
+
+    var html="";
+
+    snapshot.forEach(function(child){
+        html += "<div class='player'>" + child.val().ad + "</div>";
+    });
+
+    document.getElementById("oyuncuListesi").innerHTML = html;
+});
+
+// Hepsini sil
+function tumunuSil(){
+    db.ref("turnuva/oyuncular").remove();
+}
+
+</script>
 </body>
 </html>
