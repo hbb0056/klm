@@ -44,11 +44,16 @@
             let liste = window.onaylilar.sort(() => 0.5 - Math.random());
 
             if(mod === "grup") {
-                for(let i=0; i < Math.ceil(liste.length/4); i++) {
-                    let u = liste.slice(i*4, (i*4)+4), sk = {};
-                    u.forEach(x => { sk[x.ad] = 0; db.ref("turnuva/oyuncular/"+x.id).update({durum:"eslesti", takim:x.ad}); });
-                    db.ref("turnuva/maclar/Grup-"+(i+1)).set({ tip:"grup", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:sk });
-                }
+    for(let i=0; i < Math.ceil(liste.length/4); i++) {
+        let u = liste.slice(i*4, (i*4)+4), sk = {};
+        u.forEach(x => { 
+            sk[x.ad] = 0; 
+            // BURASI ÖNEMLİ: Öğrencinin takım adı olarak kendi adını atıyoruz (Grup içi puanlama için)
+            db.ref("turnuva/oyuncular/"+x.id).update({durum:"eslesti", takim: x.ad}); 
+        });
+        db.ref("turnuva/maclar/Grup-"+(i+1)).set({ tip:"grup", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:sk });
+    }
+}
             } else if(mod === "savas") {
                 db.ref("turnuva/maclar/Takim-Savasi").set({ tip:"savas", durum:"aktif", aktifRaunt:0, kelimeler:kels, skorlar:{"BAŞLIYOR":0} });
                 window.onaylilar.forEach(o => db.ref("turnuva/oyuncular/"+o.id+"/durum").set("takim_secme_ekrani"));
