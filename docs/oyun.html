@@ -2,23 +2,24 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelime Avı - Arena</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f3460; color: white; text-align: center; margin: 0; }
-        .bar { background: #16213e; padding: 15px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 20px; }
-        #kelime { font-size: 45px; letter-spacing: 10px; background: #1a1a2e; padding: 20px; border-radius: 15px; border: 2px solid #e94560; display: inline-block; margin: 20px 0; font-weight: bold; }
-        input { padding: 15px; font-size: 20px; border-radius: 10px; border: none; width: 80%; max-width: 300px; text-align: center; margin-bottom: 10px; }
-        .btn-send { background: #27ae60; color: white; padding: 15px 30px; border-radius: 10px; border: none; font-size: 20px; font-weight: bold; cursor: pointer; width: 80%; max-width: 300px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f3460; color: white; text-align: center; margin: 0; padding: 10px; }
+        .bar { background: #16213e; padding: 15px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 18px; font-weight: bold; }
+        #kelime { font-size: 35px; letter-spacing: 8px; background: #1a1a2e; padding: 20px; border-radius: 15px; border: 2px solid #e94560; display: inline-block; margin: 20px 0; font-family: monospace; }
+        input { padding: 15px; font-size: 18px; border-radius: 10px; border: none; width: 80%; max-width: 300px; text-align: center; margin-bottom: 10px; }
+        .btn-send { background: #27ae60; color: white; padding: 15px 30px; border-radius: 10px; border: none; font-size: 20px; font-weight: bold; cursor: pointer; width: 80%; max-width: 320px; }
     </style>
 </head>
 <body>
-    <div class="bar"><div id="bilgi">Hazırlanıyor...</div><div id="skor" style="color:#f1c40f">Puan: 0</div></div>
+    <div class="bar"><div id="bilgi">Yükleniyor...</div><div id="skor" style="color:#f1c40f">Puan: 0</div></div>
     <div style="padding:10px;">
-        <p id="ipucu" style="color:#00d2ff; font-size:1.4rem;">İpucu bekleniyor...</p>
+        <p id="ipucu" style="color:#00d2ff; font-size:1.2rem; min-height:1.5em;">İpucu bekleniyor...</p>
         <div id="kelime">-----</div><br>
-        <input id="tahmin" placeholder="BURAYA YAZIN" autocomplete="off"><br>
+        <input id="tahmin" placeholder="BURAYA YAZIN" autocomplete="off" onkeypress="if(event.key==='Enter') gonder()"><br>
         <button class="btn-send" onclick="gonder()">CEVABI GÖNDER</button>
     </div>
 
@@ -29,47 +30,31 @@
         var myID = localStorage.getItem("turnuva_id");
         var myName = "", myTeam = "", activeID = "";
 
-        // Önce kendi bilgilerimizi alalım
         db.ref("turnuva/oyuncular/" + myID).on("value", s => {
             if(!s.exists()) return;
             var d = s.val();
             myName = d.ad;
-            myTeam = d.takim || d.ad; // Eğer takım yoksa adını takım sayar (Grup ve Düello için)
+            myTeam = d.takim || d.ad;
             document.getElementById("bilgi").innerText = myTeam;
         });
 
-        // Maçları takip edelim
         db.ref("turnuva/maclar").on("value", s => {
             if(!s.exists()) {
-                // Eğer maç yoksa sayfayı kapatma, sadece bilgi ver
                 document.getElementById("kelime").innerText = "BEKLEYİNİZ";
-                document.getElementById("ipucu").innerText = "Maçın başlaması bekleniyor...";
-                activeID = "";
-                return;
+                document.getElementById("ipucu").innerText = "Oyun şu an aktif değil.";
+                activeID = ""; return;
             }
-            
             s.forEach(m => {
                 var v = m.val();
                 var katildi = false;
-                
-                // Katılım kontrolü (Düello veya Takım/Grup)
-                if(v.tip === "duello") {
-                    if(v.p1 === myID || v.p2 === myID) katildi = true;
-                } else {
-                    if(v.skorlar && v.skorlar.hasOwnProperty(myTeam)) katildi = true;
-                }
+                if(v.tip === "duello") { if(v.p1 === myID || v.p2 === myID) katildi = true; }
+                else { if(v.skorlar && v.skorlar.hasOwnProperty(myTeam)) katildi = true; }
 
                 if(katildi && v.durum === "aktif") {
                     activeID = m.key;
                     document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
                     document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-                    
-                    let p = 0;
-                    if(v.tip === "duello") {
-                        p = (v.p1 === myID) ? v.p1_skor : v.p2_skor;
-                    } else {
-                        p = v.skorlar[myTeam] || 0;
-                    }
+                    let p = (v.tip === "duello") ? (v.p1 === myID ? v.p1_skor : v.p2_skor) : (v.skorlar[myTeam] || 0);
                     document.getElementById("skor").innerText = "Puan: " + p;
                 }
             });
@@ -79,23 +64,13 @@
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             document.getElementById("tahmin").value = "";
             if(!t || !activeID) return;
-
             db.ref("turnuva/maclar/" + activeID).transaction(mac => {
                 if(!mac) return mac;
                 var r = mac.aktifRaunt;
                 if(t === mac.kelimeler[r].k) {
-                    if(mac.tip === "duello") {
-                        (mac.p1 === myID) ? mac.p1_skor++ : mac.p2_skor++;
-                    } else {
-                        if(!mac.skorlar) mac.skorlar = {};
-                        mac.skorlar[myTeam] = (mac.skorlar[myTeam] || 0) + 1;
-                    }
-                    // Sonraki kelimeye geç veya bitir
-                    if(mac.aktifRaunt < mac.kelimeler.length - 1) {
-                        mac.aktifRaunt++;
-                    } else {
-                        mac.durum = "bitti";
-                    }
+                    if(mac.tip === "duello") { (mac.p1 === myID) ? mac.p1_skor++ : mac.p2_skor++; }
+                    else { if(!mac.skorlar) mac.skorlar = {}; mac.skorlar[myTeam] = (mac.skorlar[myTeam] || 0) + 1; }
+                    if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++; else mac.durum = "bitti";
                 }
                 return mac;
             });
