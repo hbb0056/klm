@@ -1,87 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Admin Panel</title>
+  <title>Admin Panel</title>
+</head>
+<body>
+
+<h2>Yönetici Paneli</h2>
+
+<h3>Onay Bekleyenler</h3>
+<div id="waitingList"></div>
+
+<h3>Yeni Soru</h3>
+<input type="text" id="hintInput" placeholder="İpucu">
+<input type="text" id="wordInput" placeholder="Kelime">
+<input type="number" id="letterTime" placeholder="Harf Açılma Süresi (sn)">
+<button onclick="startQuestion()">Soruyu Başlat</button>
+
+<h3>Oyuncular</h3>
+<div id="playersList"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<style>
-body{
-    margin:0;
-    font-family:Segoe UI;
-    background:#0f172a;
-    color:white;
-    padding:30px;
-}
-.card{
-    background:#1e293b;
-    padding:20px;
-    border-radius:10px;
-    margin-bottom:20px;
-}
-button{
-    padding:8px 12px;
-    border:none;
-    border-radius:6px;
-    background:#22c55e;
-    color:white;
-    cursor:pointer;
-}
-.player{
-    background:#334155;
-    padding:8px;
-    margin:5px 0;
-    border-radius:6px;
-}
-</style>
-</head>
-
-<body>
-
-<h1>Admin Panel</h1>
-
-<div class="card">
-<h3>Kayıtlı Oyuncular</h3>
-<div id="oyuncuListesi"></div>
-</div>
-
-<div class="card">
-<button onclick="tumunuSil()">Tüm Oyuncuları Sil</button>
-</div>
-
 <script>
 
-// FIREBASE CONFIG (AYNI OLMALI)
 var firebaseConfig = {
-  apiKey: "API_KEY_BURAYA",
+  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
-  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com/",
+  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
   projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.appspot.com",
-  messagingSenderId: "MESSAGING_ID_BURAYA",
-  appId: "APP_ID_BURAYA"
+  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
+  messagingSenderId: "154681825331",
+  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// Oyuncuları canlı dinle
-db.ref("turnuva/oyuncular").on("value", function(snapshot){
+db.ref("waitingPlayers").on("child_added", function(snapshot){
+  var data = snapshot.val();
+  var id = snapshot.key;
 
-    var html="";
-
-    snapshot.forEach(function(child){
-        html += "<div class='player'>" + child.val().ad + "</div>";
-    });
-
-    document.getElementById("oyuncuListesi").innerHTML = html;
+  document.getElementById("waitingList").innerHTML +=
+    data.name +
+    " <button onclick=\"approve('" + id + "','" + data.name + "')\">Onayla</button><br>";
 });
 
-// Hepsini sil
-function tumunuSil(){
-    db.ref("turnuva/oyuncular").remove();
+function approve(id,name){
+  db.ref("players").push({
+    name: name,
+    score: 0
+  });
+
+  db.ref("waitingPlayers/"+id).remove();
+}
+
+db.ref("players").on("value", function(snapshot){
+  var html="";
+  snapshot.forEach(function(child){
+    html += child.val().name + " - " + (child.val().score || 0) + " puan<br>";
+  });
+  document.getElementById("playersList").innerHTML = html;
+});
+
+var interval;
+
+function startQuestion(){
+  var hint = document.getElementById("hintInput").value;
+  var word = document.getElementById("wordInput").value.toUpperCase();
+  var time = document.getElementById("letterTime").value * 1000;
+
+  var hidden = "_ ".repeat(word.length);
+
+  db.ref("game/current").set({
+    hint: hint,
+    word: word,
+    displayWord: hidden,
+    openedLetters: 0
+  });
+
+  var opened = 0;
+
+  clearInterval(interval);
+
+  interval = setInterval(function(){
+    opened++;
+
+    var display="";
+    for(var i=0;i<word.length;i++){
+      if(i<opened){
+        display += word[i] + " ";
+      } else {
+        display += "_ ";
+      }
+    }
+
+    db.ref("game/current").update({
+      displayWord: display,
+      openedLetters: opened
+    });
+
+    if(opened >= word.length){
+      clearInterval(interval);
+    }
+
+  }, time);
 }
 
 </script>
