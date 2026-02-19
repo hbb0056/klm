@@ -1,99 +1,22 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Yarışma Paneli</title>
+<title>Oyun</title>
+<link rel="stylesheet" href="style.css">
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<style>
-body { font-family: sans-serif; background: #0f3460; color: white; text-align: center; margin: 0; padding: 10px; }
-.bar { background: #16213e; padding: 15px; display: flex; justify-content: space-around; }
-#kelime { font-size: 32px; letter-spacing: 5px; margin: 20px; }
-input { padding: 15px; font-size: 18px; width: 80%; }
-button { padding: 15px; font-size: 18px; background: #2ecc71; color:white; border:none; margin-top:10px; }
-#usttur { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; justify-content:center; align-items:center; flex-direction:column; }
-</style>
+<script src="app.js"></script>
 </head>
-
 <body>
 
-<div id="usttur">
-<h1>🏆 ÜST TURA GEÇTİNİZ!</h1>
-<p>Yeni tur için öğretmeni bekleyin...</p>
+<div class="container">
+<div class="card">
+<h2>Kelime Oyunu</h2>
+<div id="harfAlani">_ _ _ _ _</div>
+<button onclick="alert('Skor Firebasee yazılacak şekilde genişletilebilir')">Cevap Doğru</button>
+</div>
 </div>
 
-<div class="bar">
-<div id="isim">...</div>
-<div id="puan">Puan: 0</div>
-</div>
-
-<p id="ipucu"></p>
-<div id="kelime">-----</div>
-
-<input id="cevap" placeholder="Cevap">
-<button onclick="kontrol()">Gönder</button>
-
-<script>
-
-var firebaseConfig = {
-    apiKey: "AIzaSy...",
-    authDomain: "kelime-avi-bec9f.firebaseapp.com",
-    databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-    projectId: "kelime-avi-bec9f"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
-
-var myID = localStorage.getItem("turnuva_id");
-var myName="";
-
-db.ref("turnuva/oyuncular/"+myID).on("value",s=>{
-    if(!s.exists()) return;
-
-    myName=s.val().ad;
-    document.getElementById("isim").innerText=myName;
-
-    if(s.val().durum==="ust_tur"){
-        document.getElementById("usttur").style.display="flex";
-    } else {
-        document.getElementById("usttur").style.display="none";
-    }
-});
-
-db.ref("turnuva/maclar/TUR").on("value",s=>{
-    if(!s.exists()) return;
-
-    var v=s.val();
-    if(!v.ilerleme[myName]) return;
-
-    var sira=v.ilerleme[myName];
-
-    if(sira>=v.kelimeler.length){
-        return;
-    }
-
-    document.getElementById("kelime").innerText=v.kelimeler[sira].gizli;
-    document.getElementById("ipucu").innerText=v.kelimeler[sira].i;
-    document.getElementById("puan").innerText="Puan: "+v.skorlar[myName];
-});
-
-function kontrol(){
-    var c=document.getElementById("cevap").value.toUpperCase().trim();
-    document.getElementById("cevap").value="";
-    if(!c) return;
-
-    db.ref("turnuva/maclar/TUR").transaction(m=>{
-        if(!m) return m;
-        var sira=m.ilerleme[myName];
-        if(c===m.kelimeler[sira].k){
-            m.skorlar[myName]++;
-            m.ilerleme[myName]++;
-        }
-        return m;
-    });
-}
-
-</script>
 </body>
 </html>
