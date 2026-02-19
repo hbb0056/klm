@@ -2,8 +2,68 @@
 <html>
 <head>
   <title>Kelime Oyunu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #87CEEB; /* mavi arka plan */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    #container {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      text-align: center;
+      width: 300px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      background-color: #FFD700; /* sarı kutucuk */
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    h2, h3 {
+      margin: 10px 0;
+    }
+    #word {
+      font-size: 28px;
+      letter-spacing: 10px;
+      margin: 20px 0;
+    }
+    #message {
+      font-size: 18px;
+      margin-top: 10px;
+      min-height: 24px;
+    }
+    #hint {
+      font-style: italic;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
+
+<div id="container">
 
 <h2>Kelime Oyunu</h2>
 
@@ -15,10 +75,12 @@
 
 <div id="game" style="display:none;">
   <h3 id="hint"></h3>
-  <h2 id="word"></h2>
+  <h2 id="word">_ _ _ _</h2>
   <input type="text" id="guess" placeholder="Tahmin">
   <button onclick="sendGuess()">Gönder</button>
   <p id="message"></p>
+</div>
+
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -45,7 +107,7 @@ var guessed = false;
 
 // Katılımcı katılımı
 function joinGame(){
-  playerName = document.getElementById("playerName").value;
+  playerName = document.getElementById("playerName").value.trim();
   if(playerName==""){ alert("Adınızı yazın"); return; }
 
   db.ref("waitingPlayers").push({name:playerName});
@@ -58,13 +120,20 @@ db.ref("players").on("child_added", function(snapshot){
     playerId = snapshot.key;
     document.getElementById("login").style.display="none";
     document.getElementById("game").style.display="block";
+    document.getElementById("word").innerText = "_ _ _ _"; // başlangıç placeholder
   }
 });
 
 // Mevcut kelimeyi göster
 db.ref("game/current").on("value", function(snapshot){
   var data = snapshot.val();
-  if(data){
+  if(data && data.word){
+    // displayWord yoksa otomatik oluştur
+    if(!data.displayWord || data.displayWord.trim() == ""){
+      var placeholder = "_ ".repeat(data.word.length).trim();
+      db.ref("game/current").update({displayWord:placeholder, openedLetters:0});
+      data.displayWord = placeholder;
+    }
     document.getElementById("hint").innerText="İpucu: "+data.hint;
     document.getElementById("word").innerText=data.displayWord;
     guessed=false;
@@ -75,10 +144,13 @@ db.ref("game/current").on("value", function(snapshot){
 // Tahmin gönderme
 function sendGuess(){
   if(guessed) return;
-  var guess=document.getElementById("guess").value.toUpperCase();
+  var guess=document.getElementById("guess").value.toUpperCase().trim();
+  if(guess==""){ return; }
 
   db.ref("game/current").once("value", function(snapshot){
     var data=snapshot.val();
+    if(!data || !data.word) return;
+
     if(guess==data.word.toUpperCase()){
       var puan=100-(data.openedLetters*10);
       if(puan<0) puan=0;
