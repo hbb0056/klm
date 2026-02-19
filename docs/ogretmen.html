@@ -14,94 +14,18 @@ body{
     background:#0f172a;
     color:white;
 }
-
-.container{
-    display:flex;
-    height:100vh;
-}
-
-/* SOL PANEL */
-.left{
-    width:20%;
-    background:#1e293b;
-    padding:15px;
-    overflow:auto;
-}
-
-.stage{
-    background:#334155;
-    padding:10px;
-    margin-bottom:10px;
-    border-radius:8px;
-}
-
-.stage h4{
-    margin:0 0 8px 0;
-}
-
-.stage button{
-    width:100%;
-    padding:6px;
-    border:none;
-    background:#22c55e;
-    color:white;
-    border-radius:5px;
-}
-
-/* ORTA PANEL */
-.middle{
-    width:50%;
-    padding:20px;
-    overflow:auto;
-}
-
-.dashboard{
-    display:flex;
-    gap:15px;
-    margin-bottom:20px;
-}
-
-.stat{
-    flex:1;
-    background:#1e293b;
-    padding:15px;
-    border-radius:10px;
-    text-align:center;
-}
-
-.bracket{
-    display:flex;
-    justify-content:space-between;
-}
-
-.round{
-    width:23%;
-}
-
-.match{
-    background:#1e293b;
-    padding:10px;
-    margin-bottom:15px;
-    border-radius:8px;
-}
-
-/* SAĞ PANEL */
-.right{
-    width:30%;
-    background:#1e293b;
-    padding:20px;
-    overflow:auto;
-}
-
-input{
-    padding:6px;
-    margin:4px;
-    width:80%;
-}
-
-button{
-    cursor:pointer;
-}
+.container{display:flex;height:100vh;}
+.left{width:20%;background:#1e293b;padding:15px;overflow:auto;}
+.middle{width:50%;padding:20px;overflow:auto;}
+.right{width:30%;background:#1e293b;padding:20px;overflow:auto;}
+.card{background:#1e293b;padding:15px;margin-bottom:15px;border-radius:10px;}
+.stat{flex:1;background:#334155;padding:15px;border-radius:10px;text-align:center;}
+.dashboard{display:flex;gap:15px;margin-bottom:20px;}
+.bracket{display:flex;justify-content:space-between;}
+.round{width:23%;}
+.match{background:#334155;padding:8px;margin-bottom:10px;border-radius:6px;}
+button{padding:6px 10px;border:none;border-radius:5px;background:#22c55e;color:white;cursor:pointer;margin-top:5px;}
+input{padding:6px;margin:4px 0;width:90%;}
 </style>
 </head>
 
@@ -109,13 +33,11 @@ button{
 
 <div class="container">
 
-<!-- SOL -->
 <div class="left">
 <h3>Turnuva Aşamaları</h3>
 <div id="dynamicStages"></div>
 </div>
 
-<!-- ORTA -->
 <div class="middle">
 
 <div class="dashboard">
@@ -123,69 +45,53 @@ button{
 <h4>Toplam Oyuncu</h4>
 <div id="toplam">0</div>
 </div>
-
 <div class="stat">
 <h4>Aktif Maç</h4>
 <div id="aktifMac">0</div>
 </div>
-
 <div class="stat">
-<h4>Üst Tur</h4>
-<div id="ustTur">0</div>
+<h4>En İyi Oyuncu</h4>
+<div id="enIyi">-</div>
 </div>
 </div>
 
 <h3>Turnuva Ağacı</h3>
 
 <div class="bracket">
-
-<div class="round">
-<h4>Gruplar</h4>
-<div id="round_grup"></div>
-</div>
-
-<div class="round">
-<h4>Çeyrek</h4>
-<div id="round_ceyrek"></div>
-</div>
-
-<div class="round">
-<h4>Yarı</h4>
-<div id="round_yari"></div>
-</div>
-
-<div class="round">
-<h4>Final</h4>
-<div id="round_final"></div>
+<div class="round"><h4>Gruplar</h4><div id="round_grup"></div></div>
+<div class="round"><h4>Çeyrek</h4><div id="round_ceyrek"></div></div>
+<div class="round"><h4>Yarı</h4><div id="round_yari"></div></div>
+<div class="round"><h4>Final</h4><div id="round_final"></div></div>
 </div>
 
 </div>
 
-</div>
-
-<!-- SAĞ -->
 <div class="right">
 
 <h3>Kelime Havuzu</h3>
 
-Kelime<br>
-<input id="kelime"><br>
+Kelime
+<input id="kelime">
 
-İpucu<br>
-<input id="ipucu"><br>
+İpucu
+<input id="ipucu">
 
 <button onclick="kelimeEkle()">Ekle</button>
 
 <hr>
 
-Kelime Sayısı<br>
-<input type="number" id="kAdet" value="5"><br>
+Kelime Sayısı
+<input type="number" id="kAdet" value="5">
 
-Harf Açılma Hızı<br>
-<input type="number" id="hiz" value="10"><br><br>
+Harf Açılma Hızı
+<input type="number" id="hiz" value="10">
 
-<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button><br><br>
-<button onclick="db.ref('turnuva/havuz').remove()">Kelimeleri Sil</button><br><br>
+<button onclick="aiGrupBaslat()">AI Grup Oluştur</button>
+
+<hr>
+
+<button onclick="db.ref('turnuva').remove()">Sistemi Sıfırla</button>
+<button onclick="db.ref('turnuva/havuz').remove()">Kelimeleri Sil</button>
 <button onclick="db.ref('turnuva/oyuncular').remove()">Oyuncuları At</button>
 
 </div>
@@ -204,62 +110,31 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db=firebase.database();
 
-/* OYUNCU SAYISI */
-db.ref("turnuva/oyuncular").on("value",s=>{
-    let toplam=0;
-    let ust=0;
-
-    s.forEach(o=>{
-        toplam++;
-        if(o.val().durum=="ust_tur") ust++;
-    });
-
-    document.getElementById("toplam").innerText=toplam;
-    document.getElementById("ustTur").innerText=ust;
+/* DASHBOARD */
+db.ref("turnuva/oyuncular").on("value",snap=>{
+    document.getElementById("toplam").innerText=snap.numChildren();
 });
 
-/* AKTİF MAÇ */
-db.ref("turnuva/maclar").on("value",s=>{
-    document.getElementById("aktifMac").innerText=s.numChildren();
+db.ref("turnuva/maclar").on("value",snap=>{
+    document.getElementById("aktifMac").innerText=snap.numChildren();
 });
 
-/* DİNAMİK AŞAMALAR */
-db.ref("turnuva/maclar").on("value",s=>{
-    let html="";
-    s.forEach(m=>{
-        html+=`
-        <div class="stage">
-        <h4>${m.key}</h4>
-        <button onclick="alert('${m.key} başlatıldı')">Oyunu Başlat</button>
-        </div>`;
+/* SKOR ANALİZ */
+db.ref("turnuva/maclar").on("value",snap=>{
+    let enYuksek=0;
+    let enIyi="-";
+
+    snap.forEach(mac=>{
+        let skorlar=mac.val().skorlar;
+        for(let o in skorlar){
+            if(skorlar[o]>enYuksek){
+                enYuksek=skorlar[o];
+                enIyi=o;
+            }
+        }
     });
 
-    document.getElementById("dynamicStages").innerHTML=html;
-});
-
-/* BRACKET */
-db.ref("turnuva/maclar").on("value",s=>{
-
-    document.getElementById("round_grup").innerHTML="";
-    document.getElementById("round_ceyrek").innerHTML="";
-    document.getElementById("round_yari").innerHTML="";
-    document.getElementById("round_final").innerHTML="";
-
-    s.forEach(m=>{
-        let div=document.createElement("div");
-        div.className="match";
-        div.innerHTML="<b>"+m.key+"</b>";
-
-        if(m.key.includes("Grup"))
-            document.getElementById("round_grup").appendChild(div);
-        else if(m.key.includes("ceyrek"))
-            document.getElementById("round_ceyrek").appendChild(div);
-        else if(m.key.includes("yari"))
-            document.getElementById("round_yari").appendChild(div);
-        else if(m.key.includes("final"))
-            document.getElementById("round_final").appendChild(div);
-    });
-
+    document.getElementById("enIyi").innerText=enIyi;
 });
 
 /* KELİME EKLE */
@@ -272,6 +147,119 @@ function kelimeEkle(){
         document.getElementById("ipucu").value="";
     }
 }
+
+/* AI EŞLEŞTİRME */
+function aiGrupBaslat(){
+
+    db.ref("turnuva/oyuncular").once("value").then(snap=>{
+        let oyuncular=[];
+
+        snap.forEach(o=>{
+            oyuncular.push({
+                id:o.key,
+                ad:o.val().ad,
+                performans:Math.random()*100
+            });
+        });
+
+        oyuncular.sort((a,b)=>b.performans-a.performans);
+
+        let grupA=[],grupB=[],grupC=[];
+        let ileri=true,index=0;
+        let gruplar=[grupA,grupB,grupC];
+
+        oyuncular.forEach(o=>{
+            gruplar[index].push(o);
+            if(ileri){
+                index++;
+                if(index==2) ileri=false;
+            }else{
+                index--;
+                if(index==0) ileri=true;
+            }
+        });
+
+        db.ref("turnuva/maclar").remove();
+
+        grupOlustur("Grup-A",grupA);
+        grupOlustur("Grup-B",grupB);
+        grupOlustur("Grup-C",grupC);
+    });
+}
+
+/* GRUP OLUŞTUR */
+function grupOlustur(ad, liste){
+
+    if(liste.length==0) return;
+
+    let skor={},ilerleme={};
+
+    liste.forEach(o=>{
+        skor[o.ad]=0;
+        ilerleme[o.ad]=0;
+    });
+
+    db.ref("turnuva/maclar/"+ad).set({
+        tip:"grup",
+        durum:"aktif",
+        skorlar:skor,
+        ilerleme:ilerleme
+    });
+}
+
+/* OTOMATİK ÜST TUR */
+function macBitir(macAdi, ustTur){
+
+    db.ref("turnuva/maclar/"+macAdi).once("value").then(snap=>{
+        if(!snap.exists()) return;
+
+        let siralama=Object.entries(snap.val().skorlar)
+            .sort((a,b)=>b[1]-a[1]);
+
+        let kazanan=siralama[0][0];
+
+        db.ref("turnuva/maclar/"+ustTur+"/"+kazanan).set(true);
+
+        db.ref("turnuva/maclar/"+macAdi+"/durum").set("bitti");
+    });
+}
+
+/* BRACKET */
+db.ref("turnuva/maclar").on("value",snap=>{
+
+    document.getElementById("round_grup").innerHTML="";
+    document.getElementById("round_ceyrek").innerHTML="";
+    document.getElementById("round_yari").innerHTML="";
+    document.getElementById("round_final").innerHTML="";
+
+    snap.forEach(m=>{
+        let div=document.createElement("div");
+        div.className="match";
+        div.innerHTML=m.key;
+
+        if(m.key.includes("Grup"))
+            document.getElementById("round_grup").appendChild(div);
+        else if(m.key.includes("Ceyrek"))
+            document.getElementById("round_ceyrek").appendChild(div);
+        else if(m.key.includes("Yari"))
+            document.getElementById("round_yari").appendChild(div);
+        else if(m.key.includes("Final"))
+            document.getElementById("round_final").appendChild(div);
+    });
+});
+
+/* SOL PANEL DİNAMİK */
+db.ref("turnuva/maclar").on("value",snap=>{
+    let html="";
+    snap.forEach(m=>{
+        html+=`
+        <div class="card">
+        <b>${m.key}</b><br>
+        <button onclick="macBitir('${m.key}','Final')">Maçı Bitir</button>
+        </div>`;
+    });
+    document.getElementById("dynamicStages").innerHTML=html;
+});
 
 </script>
 
