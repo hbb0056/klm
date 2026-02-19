@@ -8,7 +8,6 @@
         .login-box { background: #16213e; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 320px; border: 1px solid #0f3460; }
         input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; box-sizing: border-box; background: #1a1a2e; color: white; border: 1px solid #4e4e4e; }
         button { width: 100%; padding: 12px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .forgot { color: #a2a8d3; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px; display: inline-block; }
         h2 { margin-top: 0; color: #00d2ff; }
     </style>
 </head>
@@ -18,29 +17,18 @@
         <input id="user" placeholder="Kullanıcı Adı">
         <input id="pass" type="password" placeholder="Şifre">
         <button onclick="giris()">GİRİŞ YAP</button>
-        <div id="ana-ekler">
-            <span class="forgot" onclick="sifreHatirlat()">Şifremi Unuttum</span>
-        </div>
     </div>
-
     <script>
         function giris() {
             var u = document.getElementById("user").value;
             var p = document.getElementById("pass").value;
-            
             if(u === "Habip-H-E-0056" && p === "123456") {
                 sessionStorage.setItem("adminRole", "ANA");
                 window.location.href = "ogretmen.html";
-            } else if(u === "misafir" && p === "9876") { // Misafir giriş bilgileri
+            } else if(u === "misafir" && p === "9876") {
                 sessionStorage.setItem("adminRole", "MISAFIR");
                 window.location.href = "ogretmen.html";
-            } else {
-                alert("Hatalı giriş bilgileri!");
-            }
-        }
-
-        function sifreHatirlat() {
-            alert("Şifre sıfırlama talebi Program.icinn@hotmail.com adresine yönlendirildi.");
+            } else { alert("Hatalı giriş!"); }
         }
     </script>
 </body>
