@@ -1,76 +1,67 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Arena</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <style>
-        body { font-family: sans-serif; background: #0f3460; color: white; text-align: center; margin: 0; }
-        .bar { background: #16213e; padding: 15px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; }
-        #kelime { font-size: 40px; letter-spacing: 8px; background: #1a1a2e; padding: 20px; border-radius: 10px; border: 2px solid #e94560; display: inline-block; margin: 20px 0; }
-        input { padding: 12px; font-size: 18px; border-radius: 5px; width: 70%; text-align: center; }
-        button { background: #27ae60; color: white; padding: 12px 25px; border-radius: 5px; border: none; font-size: 18px; cursor: pointer; margin-top: 10px; }
-        .bitti-msg { color: #f1c40f; font-size: 24px; font-weight: bold; margin-top: 20px; display: none; }
-    </style>
-</head>
-<body>
-    <div class="bar"><div id="bilgi">...</div><div id="skor">Puan: 0</div></div>
-    <div id="oyunAlan">
-        <p id="ipucu" style="color:#00d2ff; min-height:1.5em; margin-top:20px;">...</p>
-        <div id="kelime">-----</div><br>
-        <input id="tahmin" placeholder="CEVABI YAZ" autocomplete="off" onkeypress="if(event.key==='Enter') gonder()"><br>
-        <button onclick="gonder()">GÖNDER</button>
-    </div>
-    <div id="bittiEkrani" class="bitti-msg">🏁 OYUN BİTTİ!<br><small>Sonuçlar için hoca ekranını bekleyin...</small></div>
+// ... (Firebase ayarları aynı)
 
-    <script>
-        var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
-        firebase.initializeApp(firebaseConfig); var db = firebase.database();
-        var myID = localStorage.getItem("turnuva_id"), myTeam = "", activeID = "";
+var myID = localStorage.getItem("turnuva_id"), myName = "", myTeam = "", activeID = "";
 
-        db.ref("turnuva/oyuncular/" + myID).on("value", s => {
-            if(!s.exists()) { window.location.href = "index.html"; return; }
-            myTeam = s.val().takim || s.val().ad;
-            document.getElementById("bilgi").innerText = myTeam;
-            if(s.val().durum === "bekliyor") window.location.href = "index.html"; // Yeni turu bekle
-        });
+db.ref("turnuva/oyuncular/" + myID).on("value", s => {
+    if(!s.exists()) { window.location.href = "index.html"; return; }
+    myName = s.val().ad;
+    myTeam = s.val().takim || s.val().ad;
+    document.getElementById("bilgi").innerText = myTeam;
+    if(s.val().durum === "bekliyor") window.location.href = "index.html"; 
+});
 
-        db.ref("turnuva/maclar").on("value", s => {
-            if(!s.exists()) return;
-            s.forEach(m => {
-                var v = m.val();
-                var katildi = (v.tip === "duello") ? (v.p1 === myID || v.p2 === myID) : (v.skorlar && v.skorlar.hasOwnProperty(myTeam));
-                
-                if(katildi) {
-                    activeID = m.key;
-                    if(v.durum === "bitti") {
-                        document.getElementById("oyunAlan").style.display = "none";
-                        document.getElementById("bittiEkrani").style.display = "block";
-                    } else {
-                        document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
-                        document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-                        document.getElementById("skor").innerText = "Puan: " + (v.tip === "duello" ? (v.p1 === myID ? v.p1_skor : v.p2_skor) : v.skorlar[myTeam]);
-                    }
-                }
-            });
-        });
-
-        function gonder() {
-            var t = document.getElementById("tahmin").value.toUpperCase().trim();
-            document.getElementById("tahmin").value = "";
-            if(!t || !activeID) return;
-            db.ref("turnuva/maclar/" + activeID).transaction(mac => {
-                if(!mac || mac.durum === "bitti") return mac;
-                var r = mac.aktifRaunt;
-                if(t === mac.kelimeler[r].k) {
-                    if(mac.tip === "duello") { (mac.p1 === myID) ? mac.p1_skor++ : mac.p2_skor++; }
-                    else { mac.skorlar[myTeam]++; }
-                    if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++; else mac.durum = "bitti";
-                }
-                return mac;
-            });
+db.ref("turnuva/maclar").on("value", s => {
+    if(!s.exists()) return;
+    s.forEach(m => {
+        var v = m.val();
+        var katildi = (v.tip === "duello") ? (v.p1 === myID || v.p2 === myID) : (v.skorlar && v.skorlar.hasOwnProperty(myTeam));
+        
+        if(katildi) {
+            activeID = m.key;
+            // Bireysel ilerlemeyi alalım
+            var benimRaunt = (v.tip === "duello") ? (v.p1 === myID ? v.p1_ilerleme : v.p2_ilerleme) : v.ilerleme[myTeam];
+            
+            // Eğer benim kelimelerim bittiyse
+            if(benimRaunt >= v.kelimeler.length) {
+                document.getElementById("oyunAlan").style.display = "none";
+                document.getElementById("bittiEkrani").style.display = "block";
+            } else {
+                document.getElementById("oyunAlan").style.display = "block";
+                document.getElementById("bittiEkrani").style.display = "none";
+                document.getElementById("kelime").innerText = v.kelimeler[benimRaunt].gizli;
+                document.getElementById("ipucu").innerText = v.kelimeler[benimRaunt].i;
+                document.getElementById("skor").innerText = "Puan: " + (v.tip === "duello" ? (v.p1 === myID ? v.p1_skor : v.p2_skor) : v.skorlar[myTeam]);
+            }
         }
-    </script>
-</body>
-</html>
+    });
+});
+
+function gonder() {
+    var t = document.getElementById("tahmin").value.toUpperCase().trim();
+    document.getElementById("tahmin").value = "";
+    if(!t || !activeID) return;
+
+    db.ref("turnuva/maclar/" + activeID).transaction(mac => {
+        if(!mac) return mac;
+        
+        // Benim ilerlemem hangisi?
+        var r;
+        if(mac.tip === "duello") {
+            r = (mac.p1 === myID) ? mac.p1_ilerleme : mac.p2_ilerleme;
+        } else {
+            r = mac.ilerleme[myTeam];
+        }
+
+        // Kelime doğru mu?
+        if(t === mac.kelimeler[r].k) {
+            if(mac.tip === "duello") {
+                if(mac.p1 === myID) { mac.p1_skor++; mac.p1_ilerleme++; }
+                else { mac.p2_skor++; mac.p2_ilerleme++; }
+            } else {
+                mac.skorlar[myTeam]++;
+                mac.ilerleme[myTeam]++; // Sadece benim raunt ilerler
+            }
+        }
+        return mac;
+    });
+}
