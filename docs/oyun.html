@@ -2,44 +2,50 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yarışma Alanı</title>
+    <title>Yarışma Başladı!</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0f3460; color: white; text-align: center; margin: 0; }
-        .top-bar { background: #16213e; padding: 15px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 18px; }
-        .main { padding: 30px; }
-        #kelime { font-size: 45px; letter-spacing: 12px; background: #1a1a2e; padding: 20px; border-radius: 15px; border: 2px solid #535c68; display: inline-block; margin: 20px 0; }
-        input { padding: 15px; font-size: 20px; border-radius: 10px; border: none; width: 80%; max-width: 300px; text-align: center; }
+        .top-bar { background: #16213e; padding: 15px; border-bottom: 3px solid #e94560; display: flex; justify-content: space-around; font-size: 20px; font-weight: bold; }
+        #kelime { font-size: 45px; letter-spacing: 12px; background: #1a1a2e; padding: 20px; border-radius: 15px; border: 2px solid #535c68; display: inline-block; margin: 30px 0; }
+        input { padding: 15px; font-size: 20px; border-radius: 10px; border: none; width: 300px; text-align: center; outline: none; }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <div>TAKIM: <span id="tAd" style="color:#00d2ff">-</span></div>
-        <div>SKOR: <span id="tPuan" style="color:#f1c40f">0</span></div>
+        <div id="l1">Takım: -</div>
+        <div id="l2" style="color:#f1c40f">Puan: 0</div>
     </div>
-    <div class="main">
-        <p id="ipucu">İpucu bekleniyor...</p>
+    <div style="padding:20px;">
+        <p id="ipucu" style="font-size:20px; color:#00d2ff">İpucu bekleniyor...</p>
         <div id="kelime">-----</div><br>
-        <input id="tahmin" placeholder="Cevabı yazın..." onkeypress="if(event.key === 'Enter') gonder()">
+        <input id="tahmin" placeholder="Hemen yaz!" onkeypress="if(event.key === 'Enter') gonder()">
     </div>
+
     <script>
         var firebaseConfig = { apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4", authDomain: "kelime-avi-bec9f.firebaseapp.com", databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com", projectId: "kelime-avi-bec9f", storageBucket: "kelime-avi-bec9f.appspot.com", messagingSenderId: "154681825331", appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46" };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
         var myID = localStorage.getItem("turnuva_id"), myTeam = "", activeID = "";
 
-        db.ref("turnuva/oyuncular/" + myID).once("value", s => { if(s.exists()){ myTeam = s.val().takim; document.getElementById("tAd").innerText = myTeam; }});
+        db.ref("turnuva/oyuncular/" + myID).once("value", s => { 
+            if(s.exists()){ 
+                var d = s.val();
+                myTeam = d.takim || "Bireysel";
+                document.getElementById("l1").innerText = myTeam;
+            }
+        });
 
         db.ref("turnuva/maclar").on("value", s => {
             s.forEach(m => {
                 var v = m.val();
-                var ok = (v.tip==="savas")? true : (v.p1===myID || v.p2===myID);
-                if(ok && v.durum==="aktif") {
+                var katildi = (v.tip === "savas") || (v.p1 === myID || v.p2 === myID);
+                if(katildi && v.durum === "aktif") {
                     activeID = m.key;
                     document.getElementById("kelime").innerText = v.kelimeler[v.aktifRaunt].gizli;
                     document.getElementById("ipucu").innerText = v.kelimeler[v.aktifRaunt].i;
-                    document.getElementById("tPuan").innerText = (v.tip==="savas")? (v.skorlar[myTeam]||0) : (v.p1===myID?v.p1_skor:v.p2_skor);
+                    document.getElementById("l2").innerText = "Puan: " + ((v.tip==="savas") ? (v.skorlar[myTeam]||0) : (v.p1===myID?v.p1_skor:v.p2_skor));
                 }
             });
         });
@@ -48,16 +54,23 @@
             var t = document.getElementById("tahmin").value.toUpperCase().trim();
             document.getElementById("tahmin").value = "";
             if(!t || !activeID) return;
+
             db.ref("turnuva/maclar/" + activeID).transaction(mac => {
-                if(mac && mac.durum==="aktif") {
+                if(mac && mac.durum === "aktif") {
                     if(t === mac.kelimeler[mac.aktifRaunt].k) {
-                        if(mac.tip==="savas") mac.skorlar[myTeam]++; else (mac.p1===myID?mac.p1_skor++:mac.p2_skor++);
-                        if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++; else mac.durum = "bitti";
+                        if(mac.tip === "savas") {
+                            if(!mac.skorlar) mac.skorlar = {};
+                            mac.skorlar[myTeam] = (mac.skorlar[myTeam]||0) + 1;
+                        } else {
+                            (mac.p1 === myID) ? mac.p1_skor++ : mac.p2_skor++;
+                        }
+                        if(mac.aktifRaunt < mac.kelimeler.length - 1) mac.aktifRaunt++;
+                        else mac.durum = "bitti";
                     }
                 } return mac;
             });
         }
-        db.ref("turnuva/maclar").on("child_changed", s => { if(s.key === activeID && s.val().durum === "bitti") { alert("Bitti!"); window.location.href="index.html"; }});
+        db.ref("turnuva/maclar").on("child_changed", s => { if(s.key===activeID && s.val().durum==="bitti") { alert("Oyun Bitti!"); window.location.href="index.html"; }});
     </script>
 </body>
 </html>
