@@ -2,55 +2,80 @@
 <html>
 <head>
   <title>Admin Panel</title>
+  <style>
+    body{font-family: Arial, sans-serif; padding:20px; background:#f9f9f9;}
+    h2,h3{color:#333;}
+    button{margin-left:5px; padding:4px 8px; border:none; cursor:pointer; border-radius:4px;}
+    .green{background:#4CAF50;color:white;}
+    .red{background:#f44336;color:white;}
+    .section{background:white;padding:10px;margin-bottom:15px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+    input{padding:5px;margin-right:5px;}
+  </style>
 </head>
 <body>
 
 <h2>Admin Panel</h2>
 
+<div class="section">
 <h3>Onay Bekleyenler</h3>
 <div id="waitingList"></div>
+</div>
 
+<div class="section">
 <h3>Onaylanmış Oyuncular</h3>
 <div id="playersList"></div>
+</div>
 
+<div class="section">
 <h3>Kelime Havuzu</h3>
 <input type="text" id="wordInput" placeholder="Kelime">
 <input type="text" id="hintInput" placeholder="İpucu">
-<button onclick="addWord()">Ekle</button>
+<button onclick="addWord()" class="green">Ekle</button>
 <div id="wordList"></div>
+</div>
 
+<div class="section">
 <h3>Ayarlar</h3>
 <label>Her aşamada kaç kelime sorulsun?</label>
 <input type="number" id="wordsPerRound" value="3">
 <label>Harf açılma süresi (sn)</label>
 <input type="number" id="letterTime" value="2">
-<button onclick="saveSettings()">Kaydet</button>
+<button onclick="saveSettings()" class="green">Kaydet</button>
+</div>
 
+<div class="section">
 <h3>Gruplar Oluştur</h3>
 <input type="number" id="groupCount" placeholder="Kaç Grup?">
-<button onclick="createGroups()">Grupları Kur</button>
+<button onclick="createGroups()" class="green">Grupları Kur</button>
 <div id="groupsList"></div>
+<button onclick="startGame()" class="green">Oyunu Başlat</button>
+</div>
 
+<div class="section">
 <h3>Turnuva Yönetimi</h3>
-<button onclick="calculateGroupWinners()">Grup Kazananlarını Seç</button>
-<button onclick="createQuarterFinal()">Çeyrek Final Oluştur</button>
-<button onclick="createSemiFinal()">Yarı Final Oluştur</button>
-<button onclick="createFinal()">Final Oluştur</button>
-<button onclick="declareChampion()">Şampiyonu Belirle</button>
+<button onclick="calculateGroupWinners()" class="green">Grup Kazananlarını Seç</button>
+<button onclick="createQuarterFinal()" class="green">Çeyrek Final Oluştur</button>
+<button onclick="createSemiFinal()" class="green">Yarı Final Oluştur</button>
+<button onclick="createFinal()" class="green">Final Oluştur</button>
+<button onclick="declareChampion()" class="green">Şampiyonu Belirle</button>
+</div>
 
+<div class="section">
 <h3>Eşleşmeler</h3>
 <div id="matchesList"></div>
+</div>
 
+<div class="section">
 <h3>Üst Turda Kimler Var?</h3>
 <div id="quarterPlayers"></div>
 <div id="semiPlayers"></div>
 <div id="finalPlayers"></div>
+</div>
 
-<div id="championDiv"></div>
+<div id="championDiv" class="section"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <script>
 var firebaseConfig = {
   apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
@@ -61,7 +86,6 @@ var firebaseConfig = {
   messagingSenderId: "154681825331",
   appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
-
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
@@ -70,12 +94,11 @@ db.ref("waitingPlayers").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
     html+=child.val().name+
-      " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\">Onayla</button><br>";
+      " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\" class='green'>✓ Onayla</button><br>";
   });
   document.getElementById("waitingList").innerHTML=html;
 });
 
-// Onayla
 function approve(id,name){
   db.ref("players").push({name:name,score:0});
   db.ref("waitingPlayers/"+id).remove();
@@ -86,7 +109,7 @@ db.ref("players").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
     html+=child.val().name+" - "+(child.val().score||0)+
-      " <button onclick=\"removePlayer('"+child.key+"')\">At</button><br>";
+      " <button onclick=\"removePlayer('"+child.key+"')\" class='red'>✖ At</button><br>";
   });
   document.getElementById("playersList").innerHTML=html;
 });
@@ -111,7 +134,7 @@ db.ref("words").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
     html+=child.val().word+" - "+child.val().hint+
-      " <button onclick=\"removeWord('"+child.key+"')\">Sil</button><br>";
+      " <button onclick=\"removeWord('"+child.key+"')\" class='red'>✖ Sil</button><br>";
   });
   document.getElementById("wordList").innerHTML=html;
 });
@@ -157,84 +180,35 @@ function createGroups(){
   });
 }
 
-// Grupları göster
-db.ref("groups").on("value", function(snapshot){
-  var html="";
-  snapshot.forEach(function(group){
-    html+="<b>Grup "+group.key+"</b><br>";
-    group.forEach(function(player){ html+=player.val().name+"<br>"; });
-    html+="<br>";
-  });
-  document.getElementById("groupsList").innerHTML=html;
-});
-
-// Grup kazananlarını seç
-function calculateGroupWinners(){
-  db.ref("groups").once("value", function(snapshot){
-    var qualified=[];
-    snapshot.forEach(function(group){
-      var arr=[];
-      group.forEach(function(player){ arr.push(player.val()); });
-      arr.sort((a,b)=>b.score-b.score);
-      if(arr[0]) qualified.push(arr[0]);
-      if(arr[1]) qualified.push(arr[1]);
+// Oyunu başlat
+function startGame(){
+  // Rastgele kelime seçip game/current'e yaz
+  db.ref("settings").once("value", function(snap){
+    var settings = snap.val()||{wordsPerRound:3,letterTime:2};
+    db.ref("words").once("value", function(snap2){
+      var wordArr=[];
+      snap2.forEach(function(c){ wordArr.push(c.val()); });
+      if(wordArr.length==0){ alert("Kelime havuzu boş!"); return; }
+      wordArr=shuffle(wordArr);
+      var selected=wordArr.slice(0,settings.wordsPerRound);
+      db.ref("game/current").set({
+        word:selected[0].word,
+        hint:selected[0].hint,
+        displayWord:"_ ".repeat(selected[0].word.length),
+        openedLetters:0
+      });
+      // Harf açılma mantığı
+      var opened=0;
+      var interval = setInterval(function(){
+        opened++;
+        var display="";
+        for(let i=0;i<selected[0].word.length;i++){
+          display += (i<opened?selected[0].word[i]:"_") + " ";
+        }
+        db.ref("game/current").update({displayWord:display,openedLetters:opened});
+        if(opened>=selected[0].word.length) clearInterval(interval);
+      },settings.letterTime*1000);
     });
-    db.ref("qualified").set(qualified);
-    db.ref("stage").set("quarter");
-  });
-}
-
-// Çeyrek Final
-function createQuarterFinal(){
-  db.ref("qualified").once("value", function(snapshot){
-    var players=snapshot.val();
-    players=shuffle(players);
-    var matches=[];
-    for(let i=0;i<players.length;i+=2){
-      matches.push({player1:players[i],player2:players[i+1],winner:null});
-    }
-    db.ref("quarterFinal").set(matches);
-    db.ref("stage").set("quarter");
-  });
-}
-
-// Yarı Final
-function createSemiFinal(){
-  db.ref("quarterFinal").once("value", function(snapshot){
-    var winners=[];
-    snapshot.forEach(function(match){
-      if(match.val().winner) winners.push(match.val().winner);
-    });
-    winners=shuffle(winners);
-    var matches=[];
-    for(let i=0;i<winners.length;i+=2){
-      matches.push({player1:winners[i],player2:winners[i+1],winner:null});
-    }
-    db.ref("semiFinal").set(matches);
-    db.ref("stage").set("semi");
-  });
-}
-
-// Final
-function createFinal(){
-  db.ref("semiFinal").once("value", function(snapshot){
-    var winners=[];
-    snapshot.forEach(function(match){
-      if(match.val().winner) winners.push(match.val().winner);
-    });
-    db.ref("final").set({player1:winners[0],player2:winners[1],winner:null});
-    db.ref("stage").set("final");
-  });
-}
-
-// Şampiyon
-function declareChampion(){
-  db.ref("final").once("value", function(snapshot){
-    var f=snapshot.val();
-    if(f.winner){
-      db.ref("champion").set(f.winner);
-      db.ref("stage").set("finished");
-    }
   });
 }
 
