@@ -12,28 +12,30 @@
         input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; font-size: 16px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
         .hidden { display: none; }
-        p { line-height: 1.6; }
     </style>
 </head>
 <body>
     <div class="box">
         <h2>🏆 Kelime Avı</h2>
+        
         <div id="step1">
             <input id="ad" placeholder="Adınız Soyadınız" autocomplete="off">
             <button onclick="kaydol()">KATIL</button>
         </div>
+        
         <div id="step2" class="hidden">
-            <p id="mesaj">⏳ Öğretmen onayı bekleniyor...</p>
+            <p id="mesaj">⏳ Öğretmen onayı ve gruplandırma bekleniyor...</p>
         </div>
+        
         <div id="stepTakim" class="hidden">
-            <p style="color:#00d2ff">TAKIM SAVAŞI BAŞLADI!<br>Bir takıma katıl veya yeni kur.</p>
+            <p style="color:#00d2ff; font-weight:bold;">TAKIM SAVAŞI BAŞLIYOR!</p>
             <select id="rolSec" onchange="rolDegis()">
-                <option value="oyuncu">Mevcut Takıma Katıl</option>
+                <option value="oyuncu">Mevcut Bir Takıma Katıl</option>
                 <option value="kaptan">Yeni Takım Kur (Kaptan)</option>
             </select>
-            <input id="yeniTakimAd" class="hidden" placeholder="Takım Adı Yazın">
-            <select id="hazirTakimlar"><option value="">Takım Seçiniz...</option></select>
-            <button onclick="takimTamamla()">OYUNA BAŞLA</button>
+            <input id="yeniTakimAd" style="display:none;" placeholder="Takım Adı Belirle">
+            <select id="hazirTakimlar"><option value="">Listeden Takım Seç...</option></select>
+            <button onclick="takimTamamla()">OYUNA GİR</button>
         </div>
     </div>
 
@@ -46,7 +48,7 @@
 
         function kaydol() {
             var ad = document.getElementById("ad").value.trim();
-            if(!ad) return alert("İsim yazın!");
+            if(!ad) return alert("Lütfen isminizi yazın!");
             db.ref("turnuva/oyuncular/" + myID).set({ ad: ad, durum: "onay_bekliyor" });
             document.getElementById("step1").classList.add("hidden");
             document.getElementById("step2").classList.remove("hidden");
@@ -61,23 +63,34 @@
         db.ref("turnuva/oyuncular/" + myID).on("value", s => {
             if(!s.exists()) return;
             var d = s.val();
+            
+            // Eğer hoca Takım Savaşı başlattıysa
             if(d.durum === "takim_secme_ekrani") {
                 document.getElementById("step2").classList.add("hidden");
                 document.getElementById("stepTakim").classList.remove("hidden");
+                
                 db.ref("turnuva/takim_isimleri").on("value", ts => {
                     var sel = document.getElementById("hazirTakimlar");
-                    sel.innerHTML = '<option value="">Takım Seçiniz...</option>';
+                    sel.innerHTML = '<option value="">Listeden Takım Seç...</option>';
                     ts.forEach(t => { sel.innerHTML += `<option value="${t.key}">${t.key}</option>`; });
                 });
             }
-            if(d.durum === "eslesti") window.location.href = "oyun.html";
+            // Eşleşme sağlandıysa oyuna yönlendir
+            if(d.durum === "eslesti") {
+                window.location.href = "oyun.html";
+            }
         });
-        
+
         function takimTamamla() {
             var rol = document.getElementById("rolSec").value;
             var tAd = (rol === "kaptan") ? document.getElementById("yeniTakimAd").value.trim().toUpperCase() : document.getElementById("hazirTakimlar").value;
-            if(!tAd) return alert("Takım belirlenmedi!");
-            if(rol === "kaptan") db.ref("turnuva/takim_isimleri/" + tAd).set(true);
+            
+            if(!tAd) return alert("Lütfen bir takım belirleyin veya seçin!");
+            
+            if(rol === "kaptan") {
+                db.ref("turnuva/takim_isimleri/" + tAd).set(true);
+            }
+            
             db.ref("turnuva/oyuncular/" + myID).update({ takim: tAd, durum: "eslesti" });
         }
     </script>
