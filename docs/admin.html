@@ -9,8 +9,10 @@
       font-family:Arial;
       padding:20px;
     }
-    button{margin:5px;padding:5px 10px;}
-    .box{border:1px solid white;padding:10px;margin:10px 0;}
+    button{
+      margin:5px;
+      padding:5px 10px;
+    }
   </style>
 </head>
 <body>
@@ -18,127 +20,55 @@
 <h2>ADMIN PANEL</h2>
 
 <h3>Onay Bekleyenler</h3>
-<div id="waiting"></div>
+<div id="waitingList"></div>
 
 <h3>Onaylanan Oyuncular</h3>
-<div id="players"></div>
-
-<h3>Kelime Havuzu</h3>
-<input id="word" placeholder="Kelime">
-<input id="hint" placeholder="İpucu">
-<button onclick="addWord()">Ekle</button>
-<div id="wordList"></div>
-
-<h3>Turnuva</h3>
-<button onclick="startTournament()">Turnuvayı Başlat</button>
-
-<div id="groups"></div>
-<div id="knockout"></div>
+<div id="playerList"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-var firebaseConfig = {
-  apiKey: "APIKEY",
-  authDomain: "PROJECT.firebaseapp.com",
-  databaseURL: "https://PROJECT-default-rtdb.firebaseio.com",
-  projectId: "PROJECT",
+const firebaseConfig = {
+  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
+  authDomain: "kelime-avi-bec9f.firebaseapp.com",
+  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
+  projectId: "kelime-avi-bec9f",
+  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
+  messagingSenderId: "154681825331",
+  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
+
 firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
+const db = firebase.database();
 
 
-// ONAY BEKLEYENLER
-db.ref("waiting").on("value",snap=>{
-  let html="";
-  snap.forEach(c=>{
-    html+=c.val().name+
-    " <button onclick=\"approve('"+c.key+"','"+c.val().name+"')\">Onayla</button><br>";
+// ONAY BEKLEYENLERİ GÖSTER
+db.ref("waiting").on("value", snapshot => {
+  let html = "";
+  snapshot.forEach(child => {
+    html += child.val().name +
+      " <button onclick=\"approve('" + child.key + "','" + child.val().name + "')\">Onayla</button><br>";
   });
-  document.getElementById("waiting").innerHTML=html;
+  document.getElementById("waitingList").innerHTML = html;
 });
 
-function approve(id,name){
-  db.ref("players").push({name:name,points:0});
-  db.ref("waiting/"+id).remove();
-}
-
-// OYUNCULAR
-db.ref("players").on("value",snap=>{
-  let html="";
-  snap.forEach(c=>{
-    html+=c.val().name+"<br>";
+function approve(id, name){
+  db.ref("players").push({
+    name: name,
+    points: 0
   });
-  document.getElementById("players").innerHTML=html;
-});
-
-// KELİME HAVUZU
-function addWord(){
-  let w=document.getElementById("word").value;
-  let h=document.getElementById("hint").value;
-  if(w==""||h=="") return;
-  db.ref("words").push({word:w,hint:h});
-  document.getElementById("word").value="";
-  document.getElementById("hint").value="";
-}
-
-db.ref("words").on("value",snap=>{
-  let html="";
-  snap.forEach(c=>{
-    html+=c.val().word+"<br>";
-  });
-  document.getElementById("wordList").innerHTML=html;
-});
-
-
-// TURNUVA BAŞLAT
-function startTournament(){
-  db.ref("players").once("value",snap=>{
-    let list=[];
-    snap.forEach(c=>{
-      list.push({id:c.key,name:c.val().name,points:0});
-    });
-
-    if(list.length<2){
-      alert("En az 2 oyuncu gerekli");
-      return;
-    }
-
-    let groups=[];
-    for(let i=0;i<list.length;i+=4){
-      groups.push(list.slice(i,i+4));
-    }
-
-    db.ref("tournament/groups").set(groups);
-    db.ref("tournament/stage").set("group");
-  });
+  db.ref("waiting/" + id).remove();
 }
 
 
-// GRUPLARI GÖSTER
-db.ref("tournament/groups").on("value",snap=>{
-  let html="";
-  let gNo=1;
-  snap.forEach(group=>{
-    html+="<div class='box'><b>Grup "+gNo+"</b><br>";
-    group.forEach(player=>{
-      html+=player.name+" (0 puan)<br>";
-    });
-    html+="</div>";
-    gNo++;
+// ONAYLANANLARI GÖSTER
+db.ref("players").on("value", snapshot => {
+  let html = "";
+  snapshot.forEach(child => {
+    html += child.val().name + "<br>";
   });
-  document.getElementById("groups").innerHTML=html;
-});
-
-
-// ELEME AŞAMASI GÖSTER
-db.ref("tournament/knockout").on("value",snap=>{
-  let html="<h3>Eleme Turları</h3>";
-  snap.forEach(match=>{
-    html+=match.val().player1+" vs "+match.val().player2+"<br>";
-  });
-  document.getElementById("knockout").innerHTML=html;
+  document.getElementById("playerList").innerHTML = html;
 });
 </script>
 
