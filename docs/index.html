@@ -1,168 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Kelime Oyunu</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #87CEEB;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    #container {
-      background: white;
-      padding: 30px 40px;
-      border-radius: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      text-align: center;
-      width: 320px;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 8px;
-      background-color: #FFD700;
-      font-size: 16px;
-      border: none;
-    }
-    button {
-      padding: 10px 20px;
-      margin: 5px;
-      border: none;
-      border-radius: 8px;
-      background-color: #4CAF50;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #word {
-      font-size: 28px;
-      letter-spacing: 8px;
-      margin: 20px 0;
-    }
-    #waitingMessage {
-      font-size: 18px;
-      color: #ff6600;
-      margin-top: 15px;
-    }
-  </style>
+<title>Oyuncu</title>
 </head>
 <body>
-
-<div id="container">
 
 <h2>Kelime Oyunu</h2>
 
 <div id="login">
-  <input type="text" id="playerName" placeholder="Adınızı yazın">
-  <button onclick="joinGame()">Katıl</button>
-  <p id="status"></p>
+<input id="name" placeholder="Adınız">
+<button onclick="join()">Katıl</button>
 </div>
 
-<div id="game" style="display:none;">
-  <div id="waitingMessage">Oyunun başlaması bekleniyor...</div>
-
-  <div id="gameArea" style="display:none;">
-    <h3 id="hint"></h3>
-    <h2 id="word">_ _ _ _</h2>
-    <input type="text" id="guess" placeholder="Tahmin">
-    <button onclick="sendGuess()">Gönder</button>
-    <p id="message"></p>
-  </div>
-</div>
-
-</div>
+<div id="status"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
 var firebaseConfig = {
-  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
-  authDomain: "kelime-avi-bec9f.firebaseapp.com",
-  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-  projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
-  messagingSenderId: "154681825331",
-  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
+  apiKey: "APIKEY",
+  authDomain: "PROJECT.firebaseapp.com",
+  databaseURL: "https://PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PROJECT",
 };
-
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-var playerId = null;
-var playerName = null;
-var guessed = false;
-
-// Katılma
-function joinGame(){
-  playerName = document.getElementById("playerName").value.trim();
-  if(playerName==""){ alert("Adınızı yazın"); return; }
-
-  db.ref("waitingPlayers").push({name:playerName});
-  document.getElementById("status").innerText="Onay bekleniyor...";
+function join(){
+  let name=document.getElementById("name").value;
+  if(name=="") return;
+  db.ref("waiting").push({name:name});
+  document.getElementById("login").style.display="none";
+  document.getElementById("status").innerHTML="Onay bekleniyor...";
 }
 
-// Onaylanınca bekleme ekranı göster
-db.ref("players").on("child_added", function(snapshot){
-  if(snapshot.val().name==playerName){
-    playerId = snapshot.key;
-    document.getElementById("login").style.display="none";
-    document.getElementById("game").style.display="block";
+// TURNUVA DURUM TAKİBİ
+db.ref("tournament/stage").on("value",snap=>{
+  if(snap.val()=="group"){
+    document.getElementById("status").innerHTML="Grup maçları başladı!";
   }
 });
-
-// Admin oyunu başlatınca stage değişir
-db.ref("stage").on("value", function(snapshot){
-  var stage = snapshot.val();
-
-  if(stage === "started"){
-    document.getElementById("waitingMessage").style.display="none";
-    document.getElementById("gameArea").style.display="block";
-  }
-});
-
-// Kelime geldiğinde göster
-db.ref("game/current").on("value", function(snapshot){
-  var data = snapshot.val();
-  if(data && data.word){
-    document.getElementById("hint").innerText="İpucu: "+data.hint;
-    document.getElementById("word").innerText=data.displayWord || "_ ".repeat(data.word.length);
-    guessed=false;
-    document.getElementById("message").innerText="";
-  }
-});
-
-// Tahmin gönder
-function sendGuess(){
-  if(guessed) return;
-  var guess=document.getElementById("guess").value.toUpperCase().trim();
-  if(guess=="") return;
-
-  db.ref("game/current").once("value", function(snapshot){
-    var data=snapshot.val();
-    if(!data || !data.word) return;
-
-    if(guess==data.word.toUpperCase()){
-      var puan=100-(data.openedLetters*10);
-      if(puan<0) puan=0;
-
-      db.ref("players/"+playerId+"/score").once("value", function(snap){
-        var eski=snap.val()||0;
-        db.ref("players/"+playerId).update({score:eski+puan});
-      });
-
-      document.getElementById("message").innerText="Doğru! +"+puan+" puan";
-    }else{
-      document.getElementById("message").innerText="Yanlış!";
-    }
-    guessed=true;
-  });
-}
 </script>
 
 </body>
