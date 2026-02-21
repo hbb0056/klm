@@ -32,6 +32,7 @@
 
 <h3>Turnuva</h3>
 <button onclick="startTournament()">Turnuvayı Başlat</button>
+<button onclick="playGroupMatches()">Grup Maçlarını Oynat</button>
 
 <div id="groupsArea"></div>
 
@@ -82,7 +83,7 @@ db.ref("players").on("value", snapshot => {
 });
 
 
-// 🎯 TURNUVA BAŞLAT → GRUP OLUŞTUR
+// GRUP OLUŞTUR
 function startTournament(){
 
   db.ref("players").once("value", snapshot => {
@@ -102,27 +103,61 @@ function startTournament(){
       return;
     }
 
-    // Eski grupları temizle
     db.ref("tournament/groups").remove();
 
-    // 4 kişilik gruplar oluştur
     let groupNumber = 1;
 
     for(let i = 0; i < players.length; i += 4){
-
       let groupPlayers = players.slice(i, i + 4);
-
       db.ref("tournament/groups/group" + groupNumber).set(groupPlayers);
-
       groupNumber++;
     }
+
+  });
+}
+
+
+// GRUP MAÇLARINI OTOMATİK OYNAT
+function playGroupMatches(){
+
+  db.ref("tournament/groups").once("value", snapshot => {
+
+    snapshot.forEach(groupSnap => {
+
+      let group = [];
+      groupSnap.forEach(player => {
+        group.push(player.val());
+      });
+
+      // herkes herkesle oynar
+      for(let i=0; i<group.length; i++){
+        for(let j=i+1; j<group.length; j++){
+
+          let result = Math.random();
+
+          if(result < 0.4){
+            group[i].points += 3;
+          }
+          else if(result < 0.8){
+            group[j].points += 3;
+          }
+          else{
+            group[i].points += 1;
+            group[j].points += 1;
+          }
+        }
+      }
+
+      db.ref("tournament/groups/" + groupSnap.key).set(group);
+
+    });
 
   });
 
 }
 
 
-// GRUPLARI ADMIN PANELİNDE GÖSTER
+// GRUPLARI GÖSTER
 db.ref("tournament/groups").on("value", snapshot => {
 
   let html = "";
@@ -130,10 +165,18 @@ db.ref("tournament/groups").on("value", snapshot => {
 
   snapshot.forEach(group => {
 
+    let players = [];
+
+    group.forEach(p => {
+      players.push(p.val());
+    });
+
+    players.sort((a,b)=>b.points - a.points);
+
     html += "<div class='groupBox'><b>Grup " + gNo + "</b><br>";
 
-    group.forEach(player => {
-      html += player.name + " (0 puan)<br>";
+    players.forEach(p=>{
+      html += p.name + " - " + p.points + " puan<br>";
     });
 
     html += "</div>";
