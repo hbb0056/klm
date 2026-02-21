@@ -3,21 +3,9 @@
 <head>
   <title>Admin Panel</title>
   <style>
-    body{
-      background:black;
-      color:white;
-      font-family:Arial;
-      padding:20px;
-    }
-    button{
-      margin:5px;
-      padding:5px 10px;
-    }
-    .box{
-      border:1px solid white;
-      padding:10px;
-      margin:10px 0;
-    }
+    body{background:black;color:white;font-family:Arial;padding:20px}
+    button{margin:5px;padding:5px 10px}
+    .box{border:1px solid white;padding:10px;margin:10px 0}
   </style>
 </head>
 <body>
@@ -27,16 +15,20 @@
 <h3>Onay Bekleyenler</h3>
 <div id="waitingList"></div>
 
-<h3>Onaylanan Oyuncular</h3>
+<h3>Oyuncular</h3>
 <div id="playerList"></div>
+
+<h3>Kelime Havuzu</h3>
+<input type="text" id="newWord" placeholder="Kelime gir">
+<button onclick="addWord()">Ekle</button>
+<div id="wordList"></div>
 
 <h3>Turnuva</h3>
 <button onclick="startTournament()">Turnuvayı Başlat</button>
-<button onclick="playGroupMatches()">Grup Maçlarını Oynat</button>
-<button onclick="createQuarterFinals()">Çeyrek Finalleri Oluştur</button>
-
 <div id="groupsArea"></div>
-<div id="quarterArea"></div>
+
+<h3>Eleme Turları</h3>
+<div id="bracketArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -47,195 +39,119 @@ const firebaseConfig = {
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
   databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
   projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
-  messagingSenderId: "154681825331",
-  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
-
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db=firebase.database();
 
-
-// ONAY
-db.ref("waiting").on("value", snapshot => {
+/* ONAY */
+db.ref("waiting").on("value",snap=>{
   let html="";
-  snapshot.forEach(child=>{
-    html+=child.val().name+
-    " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\">Onayla</button><br>";
+  snap.forEach(c=>{
+    html+=c.val().name+
+    " <button onclick=\"approve('"+c.key+"','"+c.val().name+"')\">Onayla</button><br>";
   });
-  document.getElementById("waitingList").innerHTML=html;
+  waitingList.innerHTML=html;
 });
 
 function approve(id,name){
-  db.ref("players").push({name:name,points:0});
+  db.ref("players").push({name:name,score:0});
   db.ref("waiting/"+id).remove();
 }
 
-db.ref("players").on("value", snapshot=>{
+/* OYUNCU LİSTESİ + ATMA */
+db.ref("players").on("value",snap=>{
   let html="";
-  snapshot.forEach(child=>{
-    html+=child.val().name+"<br>";
+  snap.forEach(c=>{
+    html+=c.val().name+
+    " <button onclick=\"kick('"+c.key+"')\">At</button><br>";
   });
-  document.getElementById("playerList").innerHTML=html;
+  playerList.innerHTML=html;
 });
 
+function kick(id){
+  db.ref("players/"+id).remove();
+}
 
-// GRUP OLUŞTUR
+/* KELİME */
+function addWord(){
+  let w=newWord.value.trim();
+  if(w=="") return;
+  db.ref("words").push(w);
+  newWord.value="";
+}
+function deleteWord(id){
+  db.ref("words/"+id).remove();
+}
+db.ref("words").on("value",snap=>{
+  let html="";
+  snap.forEach(c=>{
+    html+=c.val()+" <button onclick=\"deleteWord('"+c.key+"')\">Sil</button><br>";
+  });
+  wordList.innerHTML=html;
+});
+
+/* TURNUVA */
 function startTournament(){
-
-  db.ref("players").once("value", snapshot=>{
-
+  db.ref("players").once("value",snap=>{
     let players=[];
-    snapshot.forEach(child=>{
-      players.push({name:child.val().name,points:0});
-    });
+    snap.forEach(c=>players.push(c.val()));
+    if(players.length<4){alert("En az 4 oyuncu");return;}
 
-    let total = players.length;
+    db.ref("tournament").remove();
 
-    if(total < 3){
-      alert("En az 3 oyuncu gerekli");
-      return;
-    }
-
-    db.ref("tournament/groups").remove();
-
-    let groups=[];
-    let i=0;
-
-    while(total - i > 0){
-
-      let remaining = total - i;
-
-      if(remaining == 5){
-        groups.push(players.slice(i,i+3));
-        groups.push(players.slice(i+3,i+5));
-        break;
-      }
-
-      if(remaining == 2){
-        groups[groups.length-1] = 
-          groups[groups.length-1].concat(players.slice(i,i+2));
-        break;
-      }
-
-      if(remaining >= 4){
-        groups.push(players.slice(i,i+4));
-        i+=4;
-      }else{
-        groups.push(players.slice(i,i+3));
-        break;
-      }
-    }
-
-    groups.forEach((group,index)=>{
-      db.ref("tournament/groups/group"+(index+1)).set(group);
-    });
-      db.ref("tournament/status").set("started");
+    db.ref("tournament/round").set("quarter");
+    createMatches(players);
+    db.ref("tournament/status").set("started");
   });
 }
 
-// GRUP MAÇLARI
-function playGroupMatches(){
-  db.ref("tournament/groups").once("value", snapshot=>{
-    snapshot.forEach(groupSnap=>{
-      let group=[];
-      groupSnap.forEach(p=>group.push(p.val()));
-
-      for(let i=0;i<group.length;i++){
-        for(let j=i+1;j<group.length;j++){
-          let r=Math.random();
-          if(r<0.5){
-            group[i].points+=3;
-          }else{
-            group[j].points+=3;
-          }
-        }
-      }
-
-      db.ref("tournament/groups/"+groupSnap.key).set(group);
-    });
-  });
+/* EŞLEŞME */
+function createMatches(list){
+  list.sort(()=>Math.random()-0.5);
+  for(let i=0;i<list.length;i+=2){
+    db.ref("tournament/matches/m"+(i/2))
+    .set({p1:list[i].name,p2:list[i+1]?.name||"",winner:""});
+  }
 }
 
-
-// GRUP GÖSTER
-db.ref("tournament/groups").on("value", snapshot=>{
+/* MAÇ GÖSTER */
+db.ref("tournament/matches").on("value",snap=>{
   let html="";
-  snapshot.forEach((group,index)=>{
-    let players=[];
-    group.forEach(p=>players.push(p.val()));
-    players.sort((a,b)=>b.points-a.points);
-
-    html+="<div class='box'><b>Grup</b><br>";
-    players.forEach(p=>{
-      html+=p.name+" - "+p.points+" puan<br>";
-    });
-    html+="</div>";
+  snap.forEach(c=>{
+    let m=c.val();
+    html+=m.p1+" vs "+m.p2+
+    " <button onclick=\"win('"+c.key+"','"+m.p1+"')\">"+m.p1+"</button>"+
+    " <button onclick=\"win('"+c.key+"','"+m.p2+"')\">"+m.p2+"</button><br>";
   });
-  document.getElementById("groupsArea").innerHTML=html;
+  bracketArea.innerHTML=html;
 });
 
+/* KAZANAN */
+function win(matchId,name){
+  db.ref("tournament/matches/"+matchId+"/winner").set(name);
 
-// ÇEYREK FİNAL OLUŞTUR
-function createQuarterFinals(){
-
-  db.ref("tournament/groups").once("value", snapshot=>{
-
-    let qualified=[];
-
-    snapshot.forEach(groupSnap=>{
-      let players=[];
-      groupSnap.forEach(p=>players.push(p.val()));
-      players.sort((a,b)=>b.points-a.points);
-
-      if(players.length>=2){
-        qualified.push(players[0]);
-        qualified.push(players[1]);
-      }
-    });
-
-    if(qualified.length < 2){
-      alert("Yeterli oyuncu yok");
-      return;
-    }
-
-    db.ref("tournament/bracket").remove();
-
-    // Karıştır
-    qualified.sort(()=>Math.random()-0.5);
-
-    let roundName="";
-    let total = qualified.length;
-
-    if(total==4) roundName="Yarı Final";
-    else if(total==8) roundName="Çeyrek Final";
-    else if(total==16) roundName="Son 16";
-    else roundName="Eleme Turu";
-
-    for(let i=0;i<qualified.length;i+=2){
-
-      db.ref("tournament/bracket/match"+(i/2+1)).set({
-        round: roundName,
-        player1: qualified[i]?.name || "",
-        player2: qualified[i+1]?.name || ""
-      });
-
-    }
-
-  });
-
+  setTimeout(checkRound,1000);
 }
 
+/* TUR KONTROL */
+function checkRound(){
+  db.ref("tournament/matches").once("value",snap=>{
+    let winners=[];
+    snap.forEach(c=>{
+      if(c.val().winner!="")
+        winners.push({name:c.val().winner});
+    });
 
-// ÇEYREK GÖSTER
-db.ref("tournament/quarter").on("value", snapshot=>{
-  let html="<h3>Çeyrek Finaller</h3>";
-  snapshot.forEach(match=>{
-    html+=match.val().player1+" vs "+match.val().player2+"<br>";
+    if(winners.length>=2 && winners.length%2==0){
+      if(winners.length==1){
+        db.ref("tournament/champion").set(winners[0].name);
+      }else{
+        db.ref("tournament/matches").remove();
+        createMatches(winners);
+      }
+    }
   });
-  document.getElementById("quarterArea").innerHTML=html;
-});
+}
 </script>
-
 </body>
 </html>
