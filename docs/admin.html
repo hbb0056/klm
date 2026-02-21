@@ -130,7 +130,7 @@ function startTournament(){
     groups.forEach((group,index)=>{
       db.ref("tournament/groups/group"+(index+1)).set(group);
     });
-
+      db.ref("tournament/status").set("started");
   });
 }
 
