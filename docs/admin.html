@@ -194,13 +194,32 @@ function createQuarterFinals(){
       }
     });
 
-    db.ref("tournament/quarter").remove();
+    if(qualified.length < 2){
+      alert("Yeterli oyuncu yok");
+      return;
+    }
+
+    db.ref("tournament/bracket").remove();
+
+    // Karıştır
+    qualified.sort(()=>Math.random()-0.5);
+
+    let roundName="";
+    let total = qualified.length;
+
+    if(total==4) roundName="Yarı Final";
+    else if(total==8) roundName="Çeyrek Final";
+    else if(total==16) roundName="Son 16";
+    else roundName="Eleme Turu";
 
     for(let i=0;i<qualified.length;i+=2){
-      db.ref("tournament/quarter/match"+(i/2+1)).set({
+
+      db.ref("tournament/bracket/match"+(i/2+1)).set({
+        round: roundName,
         player1: qualified[i]?.name || "",
         player2: qualified[i+1]?.name || ""
       });
+
     }
 
   });
