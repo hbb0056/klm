@@ -1,18 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Oyuncu</title>
+  <title>Oyuncu Girişi</title>
 </head>
 <body>
 
-<h2>Kelime Oyunu</h2>
+<h2>Oyuna Katıl</h2>
 
-<div id="login">
-<input id="name" placeholder="Adınız">
+<input type="text" id="name" placeholder="Adınızı yazın">
 <button onclick="join()">Katıl</button>
-</div>
 
-<div id="status"></div>
+<p id="message"></p>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -24,23 +22,24 @@ var firebaseConfig = {
   databaseURL: "https://PROJECT-default-rtdb.firebaseio.com",
   projectId: "PROJECT",
 };
+
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 function join(){
-  let name=document.getElementById("name").value;
-  if(name=="") return;
-  db.ref("waiting").push({name:name});
-  document.getElementById("login").style.display="none";
-  document.getElementById("status").innerHTML="Onay bekleniyor...";
-}
+  var name = document.getElementById("name").value;
 
-// TURNUVA DURUM TAKİBİ
-db.ref("tournament/stage").on("value",snap=>{
-  if(snap.val()=="group"){
-    document.getElementById("status").innerHTML="Grup maçları başladı!";
+  if(name==""){
+    alert("İsim giriniz");
+    return;
   }
-});
+
+  db.ref("waiting").push({
+    name: name
+  });
+
+  document.getElementById("message").innerHTML="Onay bekleniyor...";
+}
 </script>
 
 </body>
