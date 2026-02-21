@@ -5,7 +5,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #87CEEB; /* mavi arka plan */
+      background-color: #87CEEB;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -18,16 +18,16 @@
       border-radius: 15px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
       text-align: center;
-      width: 300px;
+      width: 320px;
     }
     input[type="text"] {
       width: 100%;
       padding: 10px;
       margin: 10px 0;
-      border: 2px solid #ccc;
       border-radius: 8px;
-      background-color: #FFD700; /* sarı kutucuk */
+      background-color: #FFD700;
       font-size: 16px;
+      border: none;
     }
     button {
       padding: 10px 20px;
@@ -39,25 +39,15 @@
       font-size: 16px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #45a049;
-    }
-    h2, h3 {
-      margin: 10px 0;
-    }
     #word {
       font-size: 28px;
-      letter-spacing: 10px;
+      letter-spacing: 8px;
       margin: 20px 0;
     }
-    #message {
+    #waitingMessage {
       font-size: 18px;
-      margin-top: 10px;
-      min-height: 24px;
-    }
-    #hint {
-      font-style: italic;
-      color: #555;
+      color: #ff6600;
+      margin-top: 15px;
     }
   </style>
 </head>
@@ -74,11 +64,15 @@
 </div>
 
 <div id="game" style="display:none;">
-  <h3 id="hint"></h3>
-  <h2 id="word">_ _ _ _</h2>
-  <input type="text" id="guess" placeholder="Tahmin">
-  <button onclick="sendGuess()">Gönder</button>
-  <p id="message"></p>
+  <div id="waitingMessage">Oyunun başlaması bekleniyor...</div>
+
+  <div id="gameArea" style="display:none;">
+    <h3 id="hint"></h3>
+    <h2 id="word">_ _ _ _</h2>
+    <input type="text" id="guess" placeholder="Tahmin">
+    <button onclick="sendGuess()">Gönder</button>
+    <p id="message"></p>
+  </div>
 </div>
 
 </div>
@@ -87,7 +81,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-// Firebase config
 var firebaseConfig = {
   apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
   authDomain: "kelime-avi-bec9f.firebaseapp.com",
@@ -105,7 +98,7 @@ var playerId = null;
 var playerName = null;
 var guessed = false;
 
-// Katılımcı katılımı
+// Katılma
 function joinGame(){
   playerName = document.getElementById("playerName").value.trim();
   if(playerName==""){ alert("Adınızı yazın"); return; }
@@ -114,38 +107,41 @@ function joinGame(){
   document.getElementById("status").innerText="Onay bekleniyor...";
 }
 
-// Onaylandığında oyun ekranını göster
+// Onaylanınca bekleme ekranı göster
 db.ref("players").on("child_added", function(snapshot){
   if(snapshot.val().name==playerName){
     playerId = snapshot.key;
     document.getElementById("login").style.display="none";
     document.getElementById("game").style.display="block";
-    document.getElementById("word").innerText = "_ _ _ _"; // başlangıç placeholder
   }
 });
 
-// Mevcut kelimeyi göster
+// Admin oyunu başlatınca stage değişir
+db.ref("stage").on("value", function(snapshot){
+  var stage = snapshot.val();
+
+  if(stage === "started"){
+    document.getElementById("waitingMessage").style.display="none";
+    document.getElementById("gameArea").style.display="block";
+  }
+});
+
+// Kelime geldiğinde göster
 db.ref("game/current").on("value", function(snapshot){
   var data = snapshot.val();
   if(data && data.word){
-    // displayWord yoksa otomatik oluştur
-    if(!data.displayWord || data.displayWord.trim() == ""){
-      var placeholder = "_ ".repeat(data.word.length).trim();
-      db.ref("game/current").update({displayWord:placeholder, openedLetters:0});
-      data.displayWord = placeholder;
-    }
     document.getElementById("hint").innerText="İpucu: "+data.hint;
-    document.getElementById("word").innerText=data.displayWord;
+    document.getElementById("word").innerText=data.displayWord || "_ ".repeat(data.word.length);
     guessed=false;
     document.getElementById("message").innerText="";
   }
 });
 
-// Tahmin gönderme
+// Tahmin gönder
 function sendGuess(){
   if(guessed) return;
   var guess=document.getElementById("guess").value.toUpperCase().trim();
-  if(guess==""){ return; }
+  if(guess=="") return;
 
   db.ref("game/current").once("value", function(snapshot){
     var data=snapshot.val();
