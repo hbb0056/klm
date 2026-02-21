@@ -3,7 +3,7 @@
 <head>
 <title>Oyun</title>
 <style>
-body{background:black;color:white;text-align:center;font-family:Arial}
+body{background:#111;color:white;text-align:center;font-family:Arial}
 #timer{font-size:40px;color:red}
 </style>
 </head>
@@ -19,7 +19,6 @@ body{background:black;color:white;text-align:center;font-family:Arial}
 <div id="game" style="display:none">
 <h2 id="word"></h2>
 <div id="timer">30</div>
-<h3>Puanın: <span id="score">0</span></h3>
 </div>
 
 <div id="champion" style="display:none">
@@ -29,6 +28,7 @@ body{background:black;color:white;text-align:center;font-family:Arial}
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
 const firebaseConfig={
 apiKey:"AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
@@ -38,14 +38,22 @@ databaseURL:"https://kelime-avi-bec9f-default-rtdb.firebaseio.com"
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 
-let myName="";
-let myScore=0;
-let time=30;
+let myName=localStorage.getItem("playerName")||"";
+let gameStarted=false;
 let interval;
+let time=30;
 
-/* GİRİŞ */
+/* AUTO LOGIN */
+if(myName){
+  login.style.display="none";
+  waiting.style.display="block";
+}
+
+/* JOIN */
 function join(){
-  myName=name.value;
+  if(!name.value.trim()) return alert("İsim giriniz");
+  myName=name.value.trim();
+  localStorage.setItem("playerName",myName);
   db.ref("waiting").push({name:myName});
   login.style.display="none";
   waiting.style.display="block";
@@ -53,16 +61,19 @@ function join(){
 
 /* ONAY */
 db.ref("players").on("value",snap=>{
+  let approved=false;
   snap.forEach(c=>{
-    if(c.val().name==myName){
-      waiting.innerHTML="Onaylandı";
-    }
+    if(c.val().name==myName) approved=true;
   });
+  if(approved){
+    waiting.innerHTML="Onaylandı. Başlatma bekleniyor...";
+  }
 });
 
-/* BAŞLAT */
+/* STATUS */
 db.ref("tournament/status").on("value",snap=>{
-  if(snap.val()=="started"){
+  if(snap.val()=="started" && !gameStarted){
+    gameStarted=true;
     waiting.style.display="none";
     game.style.display="block";
     newWord();
@@ -70,18 +81,21 @@ db.ref("tournament/status").on("value",snap=>{
   }
 });
 
-/* KELİME */
+/* WORD */
 function newWord(){
   db.ref("words").once("value",snap=>{
     let arr=[];
     snap.forEach(c=>arr.push(c.val()));
     if(arr.length>0)
       word.innerText=arr[Math.floor(Math.random()*arr.length)];
+    else
+      word.innerText="Kelime yok";
   });
 }
 
-/* SÜRE */
+/* TIMER */
 function startTimer(){
+  clearInterval(interval);
   interval=setInterval(()=>{
     time--;
     timer.innerText=time;
@@ -92,7 +106,7 @@ function startTimer(){
   },1000);
 }
 
-/* ŞAMPİYON */
+/* CHAMPION */
 db.ref("tournament/champion").on("value",snap=>{
   if(snap.val()){
     game.style.display="none";
@@ -101,14 +115,15 @@ db.ref("tournament/champion").on("value",snap=>{
   }
 });
 
-/* OYUNDAN ATILMA */
+/* KICK CONTROL */
 db.ref("players").on("value",snap=>{
   let exists=false;
   snap.forEach(c=>{
     if(c.val().name==myName) exists=true;
   });
-  if(!exists && myName!=""){
+  if(!exists && myName){
     alert("Oyundan çıkarıldınız");
+    localStorage.removeItem("playerName");
     location.reload();
   }
 });
