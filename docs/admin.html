@@ -4,184 +4,93 @@
   <title>Admin Panel</title>
   <style>
     body{
-      font-family: Arial;
-      background-color: #111; /* siyah arka plan */
-      color: white;
+      background:black;
+      color:white;
+      font-family:Arial;
       padding:20px;
     }
-    h2,h3{color:#00ffcc;}
-    .section{
-      background:#1e1e1e;
-      padding:15px;
-      margin-bottom:15px;
-      border-radius:10px;
-    }
-    button{
-      padding:6px 10px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      margin-left:5px;
-    }
-    .green{background:#4CAF50;color:white;}
-    .red{background:#f44336;color:white;}
-    input{
-      padding:6px;
-      margin:5px;
-      border-radius:6px;
-      border:none;
-    }
+    button{margin:5px;padding:5px 10px;}
   </style>
 </head>
 <body>
 
 <h2>ADMIN PANEL</h2>
 
-<div class="section">
 <h3>Onay Bekleyenler</h3>
-<div id="waitingList"></div>
-</div>
+<div id="waiting"></div>
 
-<div class="section">
-<h3>Onaylanmış Oyuncular</h3>
-<div id="playersList"></div>
-</div>
+<h3>Onaylanan Oyuncular</h3>
+<div id="players"></div>
 
-<div class="section">
-<h3>Kelime Havuzu</h3>
-<input type="text" id="wordInput" placeholder="Kelime">
-<input type="text" id="hintInput" placeholder="İpucu">
-<button onclick="addWord()" class="green">Ekle</button>
-<div id="wordList"></div>
-</div>
-
-<div class="section">
-<h3>Oyun Kontrol</h3>
-<button onclick="startGame()" class="green">🎮 Oyunu Başlat</button>
-<button onclick="stopGame()" class="red">⛔ Oyunu Durdur</button>
-</div>
+<button onclick="startTournament()">🎮 Turnuvayı Başlat</button>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
 var firebaseConfig = {
-  apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
-  authDomain: "kelime-avi-bec9f.firebaseapp.com",
-  databaseURL: "https://kelime-avi-bec9f-default-rtdb.firebaseio.com",
-  projectId: "kelime-avi-bec9f",
-  storageBucket: "kelime-avi-bec9f.firebasestorage.app",
-  messagingSenderId: "154681825331",
-  appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
+  apiKey: "APIKEY",
+  authDomain: "PROJECT.firebaseapp.com",
+  databaseURL: "https://PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PROJECT",
 };
-
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 
-// -------------------
 // ONAY BEKLEYENLER
-// -------------------
-db.ref("waitingPlayers").on("value", function(snapshot){
-  var html="";
-  snapshot.forEach(function(child){
-    html+=child.val().name+
-    " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\" class='green'>✓</button><br>";
+db.ref("waiting").on("value",snap=>{
+  let html="";
+  snap.forEach(c=>{
+    html+=c.val().name+
+    " <button onclick=\"approve('"+c.key+"','"+c.val().name+"')\">Onayla</button><br>";
   });
-  document.getElementById("waitingList").innerHTML=html;
+  document.getElementById("waiting").innerHTML=html;
 });
 
 function approve(id,name){
   db.ref("players").push({name:name,score:0});
-  db.ref("waitingPlayers/"+id).remove();
+  db.ref("waiting/"+id).remove();
 }
 
 
-// -------------------
-// OYUNCULAR (ATMA)
-// -------------------
-db.ref("players").on("value", function(snapshot){
-  var html="";
-  snapshot.forEach(function(child){
-    html+=child.val().name+
-    " <button onclick=\"removePlayer('"+child.key+"')\" class='red'>✖</button><br>";
+// OYUNCU LİSTESİ
+db.ref("players").on("value",snap=>{
+  let html="";
+  snap.forEach(c=>{
+    html+=c.val().name+"<br>";
   });
-  document.getElementById("playersList").innerHTML=html;
+  document.getElementById("players").innerHTML=html;
 });
 
-function removePlayer(id){
-  db.ref("players/"+id).remove();
-}
 
+// 🎯 TURNUVA BAŞLAT
+function startTournament(){
 
-// -------------------
-// KELİME EKLE / SİL
-// -------------------
-function addWord(){
-  var word=document.getElementById("wordInput").value.toUpperCase();
-  var hint=document.getElementById("hintInput").value;
-  if(word==""||hint=="") return;
-  db.ref("words").push({word:word,hint:hint});
-  document.getElementById("wordInput").value="";
-  document.getElementById("hintInput").value="";
-}
+  db.ref("players").once("value",snap=>{
 
-db.ref("words").on("value", function(snapshot){
-  var html="";
-  snapshot.forEach(function(child){
-    html+=child.val().word+
-    " <button onclick=\"removeWord('"+child.key+"')\" class='red'>✖</button><br>";
-  });
-  document.getElementById("wordList").innerHTML=html;
-});
-
-function removeWord(id){
-  db.ref("words/"+id).remove();
-}
-
-
-// -------------------
-// 🎮 OYUNU BAŞLAT
-// -------------------
-function startGame(){
-
-  db.ref("words").once("value", function(snapshot){
-
-    var words=[];
-    snapshot.forEach(function(child){
-      words.push(child.val());
+    let list=[];
+    snap.forEach(c=>{
+      list.push({id:c.key,name:c.val().name,score:0});
     });
 
-    if(words.length==0){
-      alert("Kelime havuzu boş!");
+    if(list.length<2){
+      alert("En az 2 oyuncu gerekli");
       return;
     }
 
-    var random = words[Math.floor(Math.random()*words.length)];
+    // GRUP OLUŞTUR (max 4 kişi)
+    let groups=[];
+    for(let i=0;i<list.length;i+=4){
+      groups.push(list.slice(i,i+4));
+    }
 
-    // Önce stage'i başlat
-    db.ref("stage").set("started");
-
-    // Sonra kelimeyi yaz
-    db.ref("game/current").set({
-      word: random.word,
-      hint: random.hint,
-      displayWord: "_ ".repeat(random.word.length),
-      openedLetters: 0
-    });
+    db.ref("tournament/groups").set(groups);
+    db.ref("tournament/stage").set("group");
 
   });
+
 }
-
-
-// -------------------
-// ⛔ OYUNU DURDUR
-// -------------------
-function stopGame(){
-  db.ref("stage").set("stopped");
-  db.ref("game/current").remove();
-}
-
 </script>
 
 </body>
