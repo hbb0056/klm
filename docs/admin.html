@@ -13,6 +13,11 @@
       margin:5px;
       padding:5px 10px;
     }
+    .groupBox{
+      border:1px solid white;
+      padding:10px;
+      margin:10px 0;
+    }
   </style>
 </head>
 <body>
@@ -24,6 +29,11 @@
 
 <h3>Onaylanan Oyuncular</h3>
 <div id="playerList"></div>
+
+<h3>Turnuva</h3>
+<button onclick="startTournament()">Turnuvayı Başlat</button>
+
+<div id="groupsArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -43,7 +53,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 
-// ONAY BEKLEYENLERİ GÖSTER
+// ONAY BEKLEYENLER
 db.ref("waiting").on("value", snapshot => {
   let html = "";
   snapshot.forEach(child => {
@@ -62,13 +72,77 @@ function approve(id, name){
 }
 
 
-// ONAYLANANLARI GÖSTER
+// OYUNCULAR
 db.ref("players").on("value", snapshot => {
   let html = "";
   snapshot.forEach(child => {
     html += child.val().name + "<br>";
   });
   document.getElementById("playerList").innerHTML = html;
+});
+
+
+// 🎯 TURNUVA BAŞLAT → GRUP OLUŞTUR
+function startTournament(){
+
+  db.ref("players").once("value", snapshot => {
+
+    let players = [];
+
+    snapshot.forEach(child => {
+      players.push({
+        id: child.key,
+        name: child.val().name,
+        points: 0
+      });
+    });
+
+    if(players.length < 2){
+      alert("En az 2 oyuncu gerekli");
+      return;
+    }
+
+    // Eski grupları temizle
+    db.ref("tournament/groups").remove();
+
+    // 4 kişilik gruplar oluştur
+    let groupNumber = 1;
+
+    for(let i = 0; i < players.length; i += 4){
+
+      let groupPlayers = players.slice(i, i + 4);
+
+      db.ref("tournament/groups/group" + groupNumber).set(groupPlayers);
+
+      groupNumber++;
+    }
+
+  });
+
+}
+
+
+// GRUPLARI ADMIN PANELİNDE GÖSTER
+db.ref("tournament/groups").on("value", snapshot => {
+
+  let html = "";
+  let gNo = 1;
+
+  snapshot.forEach(group => {
+
+    html += "<div class='groupBox'><b>Grup " + gNo + "</b><br>";
+
+    group.forEach(player => {
+      html += player.name + " (0 puan)<br>";
+    });
+
+    html += "</div>";
+
+    gNo++;
+  });
+
+  document.getElementById("groupsArea").innerHTML = html;
+
 });
 </script>
 
