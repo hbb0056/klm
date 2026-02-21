@@ -3,18 +3,39 @@
 <head>
   <title>Admin Panel</title>
   <style>
-    body{font-family: Arial, sans-serif; padding:20px; background:#f9f9f9;}
-    h2,h3{color:#333;}
-    button{margin-left:5px; padding:4px 8px; border:none; cursor:pointer; border-radius:4px;}
+    body{
+      font-family: Arial;
+      background-color: #111; /* siyah arka plan */
+      color: white;
+      padding:20px;
+    }
+    h2,h3{color:#00ffcc;}
+    .section{
+      background:#1e1e1e;
+      padding:15px;
+      margin-bottom:15px;
+      border-radius:10px;
+    }
+    button{
+      padding:6px 10px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      margin-left:5px;
+    }
     .green{background:#4CAF50;color:white;}
     .red{background:#f44336;color:white;}
-    .section{background:white;padding:10px;margin-bottom:15px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-    input{padding:5px;margin-right:5px;}
+    input{
+      padding:6px;
+      margin:5px;
+      border-radius:6px;
+      border:none;
+    }
   </style>
 </head>
 <body>
 
-<h2>Admin Panel</h2>
+<h2>ADMIN PANEL</h2>
 
 <div class="section">
 <h3>Onay Bekleyenler</h3>
@@ -35,47 +56,14 @@
 </div>
 
 <div class="section">
-<h3>Ayarlar</h3>
-<label>Her aşamada kaç kelime sorulsun?</label>
-<input type="number" id="wordsPerRound" value="3">
-<label>Harf açılma süresi (sn)</label>
-<input type="number" id="letterTime" value="2">
-<button onclick="saveSettings()" class="green">Kaydet</button>
+<h3>Oyun Kontrol</h3>
+<button onclick="startGame()" class="green">🎮 Oyunu Başlat</button>
+<button onclick="stopGame()" class="red">⛔ Oyunu Durdur</button>
 </div>
-
-<div class="section">
-<h3>Gruplar Oluştur</h3>
-<input type="number" id="groupCount" placeholder="Kaç Grup?">
-<button onclick="createGroups()" class="green">Grupları Kur</button>
-<div id="groupsList"></div>
-<button onclick="startGame()" class="green">Oyunu Başlat</button>
-</div>
-
-<div class="section">
-<h3>Turnuva Yönetimi</h3>
-<button onclick="calculateGroupWinners()" class="green">Grup Kazananlarını Seç</button>
-<button onclick="createQuarterFinal()" class="green">Çeyrek Final Oluştur</button>
-<button onclick="createSemiFinal()" class="green">Yarı Final Oluştur</button>
-<button onclick="createFinal()" class="green">Final Oluştur</button>
-<button onclick="declareChampion()" class="green">Şampiyonu Belirle</button>
-</div>
-
-<div class="section">
-<h3>Eşleşmeler</h3>
-<div id="matchesList"></div>
-</div>
-
-<div class="section">
-<h3>Üst Turda Kimler Var?</h3>
-<div id="quarterPlayers"></div>
-<div id="semiPlayers"></div>
-<div id="finalPlayers"></div>
-</div>
-
-<div id="championDiv" class="section"></div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
 var firebaseConfig = {
   apiKey: "AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
@@ -86,15 +74,19 @@ var firebaseConfig = {
   messagingSenderId: "154681825331",
   appId: "1:154681825331:web:7c8fec41e0d8ee2664eb46"
 };
+
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-// Waiting list
+
+// -------------------
+// ONAY BEKLEYENLER
+// -------------------
 db.ref("waitingPlayers").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
     html+=child.val().name+
-      " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\" class='green'>✓ Onayla</button><br>";
+    " <button onclick=\"approve('"+child.key+"','"+child.val().name+"')\" class='green'>✓</button><br>";
   });
   document.getElementById("waitingList").innerHTML=html;
 });
@@ -104,143 +96,93 @@ function approve(id,name){
   db.ref("waitingPlayers/"+id).remove();
 }
 
-// Oyuncuları göster ve atma butonu
+
+// -------------------
+// OYUNCULAR (ATMA)
+// -------------------
 db.ref("players").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
-    html+=child.val().name+" - "+(child.val().score||0)+
-      " <button onclick=\"removePlayer('"+child.key+"')\" class='red'>✖ At</button><br>";
+    html+=child.val().name+
+    " <button onclick=\"removePlayer('"+child.key+"')\" class='red'>✖</button><br>";
   });
   document.getElementById("playersList").innerHTML=html;
 });
 
-// Oyuncu atma
 function removePlayer(id){
   db.ref("players/"+id).remove();
 }
 
-// Kelime ekle
+
+// -------------------
+// KELİME EKLE / SİL
+// -------------------
 function addWord(){
   var word=document.getElementById("wordInput").value.toUpperCase();
   var hint=document.getElementById("hintInput").value;
-  if(word=="" || hint=="") return;
+  if(word==""||hint=="") return;
   db.ref("words").push({word:word,hint:hint});
   document.getElementById("wordInput").value="";
   document.getElementById("hintInput").value="";
 }
 
-// Kelime havuzunu göster ve silme butonu
 db.ref("words").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
-    html+=child.val().word+" - "+child.val().hint+
-      " <button onclick=\"removeWord('"+child.key+"')\" class='red'>✖ Sil</button><br>";
+    html+=child.val().word+
+    " <button onclick=\"removeWord('"+child.key+"')\" class='red'>✖</button><br>";
   });
   document.getElementById("wordList").innerHTML=html;
 });
 
-// Kelime silme
 function removeWord(id){
   db.ref("words/"+id).remove();
 }
 
-// Ayarları kaydet
-function saveSettings(){
-  var words=parseInt(document.getElementById("wordsPerRound").value);
-  var letterTime=parseInt(document.getElementById("letterTime").value);
-  db.ref("settings").set({wordsPerRound:words,letterTime:letterTime});
-}
 
-// Shuffle
-function shuffle(array){
-  for(let i=array.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [array[i],array[j]]=[array[j],array[i]];
-  }
-  return array;
-}
-
-// Grupları kur
-function createGroups(){
-  var groupCount=parseInt(document.getElementById("groupCount").value);
-  db.ref("players").once("value", function(snapshot){
-    var players=[];
-    snapshot.forEach(function(child){
-      players.push({id:child.key,name:child.val().name,score:child.val().score});
-    });
-    players=shuffle(players);
-    var groups={};
-    for(let i=0;i<groupCount;i++) groups[String.fromCharCode(65+i)]=[];
-    for(let i=0;i<players.length;i++){
-      var g=Object.keys(groups)[i%groupCount];
-      groups[g].push(players[i]);
-    }
-    db.ref("groups").set(groups);
-    db.ref("stage").set("group");
-  });
-}
-
-// Oyunu başlat
+// -------------------
+// 🎮 OYUNU BAŞLAT
+// -------------------
 function startGame(){
-  // Rastgele kelime seçip game/current'e yaz
-  db.ref("settings").once("value", function(snap){
-    var settings = snap.val()||{wordsPerRound:3,letterTime:2};
-    db.ref("words").once("value", function(snap2){
-      var wordArr=[];
-      snap2.forEach(function(c){ wordArr.push(c.val()); });
-      if(wordArr.length==0){ alert("Kelime havuzu boş!"); return; }
-      wordArr=shuffle(wordArr);
-      var selected=wordArr.slice(0,settings.wordsPerRound);
-      db.ref("game/current").set({
-        word:selected[0].word,
-        hint:selected[0].hint,
-        displayWord:"_ ".repeat(selected[0].word.length),
-        openedLetters:0
-      });
-      // Harf açılma mantığı
-      var opened=0;
-      var interval = setInterval(function(){
-        opened++;
-        var display="";
-        for(let i=0;i<selected[0].word.length;i++){
-          display += (i<opened?selected[0].word[i]:"_") + " ";
-        }
-        db.ref("game/current").update({displayWord:display,openedLetters:opened});
-        if(opened>=selected[0].word.length) clearInterval(interval);
-      },settings.letterTime*1000);
-    });
-  });
-}
 
-// Üst turları göster
-function updateQualifiedDisplays(){
-  db.ref("quarterFinal").once("value", function(snapshot){
-    var html="";
-    if(snapshot.val()) snapshot.forEach(function(match){
-      if(match.val().winner) html+=match.val().winner.name+"<br>";
+  db.ref("words").once("value", function(snapshot){
+
+    var words=[];
+    snapshot.forEach(function(child){
+      words.push(child.val());
     });
-    document.getElementById("quarterPlayers").innerHTML=html;
-  });
-  db.ref("semiFinal").once("value", function(snapshot){
-    var html="";
-    if(snapshot.val()) snapshot.forEach(function(match){
-      if(match.val().winner) html+=match.val().winner.name+"<br>";
-    });
-    document.getElementById("semiPlayers").innerHTML=html;
-  });
-  db.ref("final").once("value", function(snapshot){
-    var f=snapshot.val();
-    if(f){
-      var html="";
-      if(f.player1) html+=f.player1.name+"<br>";
-      if(f.player2) html+=f.player2.name+"<br>";
-      document.getElementById("finalPlayers").innerHTML=html;
+
+    if(words.length==0){
+      alert("Kelime havuzu boş!");
+      return;
     }
+
+    var random = words[Math.floor(Math.random()*words.length)];
+
+    // Önce stage'i başlat
+    db.ref("stage").set("started");
+
+    // Sonra kelimeyi yaz
+    db.ref("game/current").set({
+      word: random.word,
+      hint: random.hint,
+      displayWord: "_ ".repeat(random.word.length),
+      openedLetters: 0
+    });
+
   });
 }
 
-setInterval(updateQualifiedDisplays,2000);
+
+// -------------------
+// ⛔ OYUNU DURDUR
+// -------------------
+function stopGame(){
+  db.ref("stage").set("stopped");
+  db.ref("game/current").remove();
+}
 
 </script>
+
 </body>
 </html>
