@@ -7,8 +7,10 @@
 
 <h2>Oyuna Katıl</h2>
 
-<input type="text" id="name" placeholder="Adınızı yazın">
-<button onclick="join()">Katıl</button>
+<div id="loginArea">
+  <input type="text" id="name" placeholder="Adınızı yazın">
+  <button onclick="join()">Katıl</button>
+</div>
 
 <p id="message"></p>
 
@@ -29,7 +31,11 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+let myName = "";
+
+
 function join(){
+
   const name = document.getElementById("name").value;
 
   if(name === ""){
@@ -37,12 +43,40 @@ function join(){
     return;
   }
 
+  myName = name;
+
   db.ref("waiting").push({
     name: name
   });
 
+  document.getElementById("loginArea").style.display = "none";
   document.getElementById("message").innerText = "Onay bekleniyor...";
+
+  checkApproval();
 }
+
+
+// ONAY TAKİBİ
+function checkApproval(){
+
+  db.ref("players").on("value", snapshot => {
+
+    let approved = false;
+
+    snapshot.forEach(child => {
+      if(child.val().name === myName){
+        approved = true;
+      }
+    });
+
+    if(approved){
+      document.getElementById("message").innerText = "Onaylandı! Turnuva başlayacak...";
+    }
+
+  });
+
+}
+
 </script>
 
 </body>
