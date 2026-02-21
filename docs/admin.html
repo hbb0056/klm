@@ -82,23 +82,57 @@ db.ref("players").on("value", snapshot=>{
 
 // GRUP OLUŞTUR
 function startTournament(){
+
   db.ref("players").once("value", snapshot=>{
+
     let players=[];
     snapshot.forEach(child=>{
       players.push({name:child.val().name,points:0});
     });
 
+    let total = players.length;
+
+    if(total < 3){
+      alert("En az 3 oyuncu gerekli");
+      return;
+    }
+
     db.ref("tournament/groups").remove();
 
-    let groupNo=1;
-    for(let i=0;i<players.length;i+=4){
-      db.ref("tournament/groups/group"+groupNo)
-        .set(players.slice(i,i+4));
-      groupNo++;
+    let groups=[];
+    let i=0;
+
+    while(total - i > 0){
+
+      let remaining = total - i;
+
+      if(remaining == 5){
+        groups.push(players.slice(i,i+3));
+        groups.push(players.slice(i+3,i+5));
+        break;
+      }
+
+      if(remaining == 2){
+        groups[groups.length-1] = 
+          groups[groups.length-1].concat(players.slice(i,i+2));
+        break;
+      }
+
+      if(remaining >= 4){
+        groups.push(players.slice(i,i+4));
+        i+=4;
+      }else{
+        groups.push(players.slice(i,i+3));
+        break;
+      }
     }
+
+    groups.forEach((group,index)=>{
+      db.ref("tournament/groups/group"+(index+1)).set(group);
+    });
+
   });
 }
-
 
 // GRUP MAÇLARI
 function playGroupMatches(){
