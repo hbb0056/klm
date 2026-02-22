@@ -80,7 +80,7 @@
     wordEmptyEl.style.display = entries.length ? "none" : "block";
     entries.forEach(function ([id, word]) {
       const li = document.createElement("li");
-      li.innerHTML = '<span class="name">' + escapeHtml(word) + "</span>';
+      li.innerHTML = '<span class="name">' + escapeHtml(word) + '</span>';
       const delBtn = document.createElement("button");
       delBtn.className = "btn btn-danger";
       delBtn.textContent = "Sil";
