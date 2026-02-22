@@ -3,211 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hesap Makinesi</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-    }
-    .calculator {
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .display {
-      background: #0d1117;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      min-height: 80px;
-      text-align: right;
-      word-break: break-all;
-    }
-    .display-expression {
-      color: #8b949e;
-      font-size: 1rem;
-      min-height: 24px;
-      margin-bottom: 4px;
-    }
-    .display-value {
-      color: #f0f6fc;
-      font-size: 2.2rem;
-      font-weight: 300;
-    }
-    .buttons {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 20px;
-      font-size: 1.3rem;
-      cursor: pointer;
-      transition: transform 0.1s, box-shadow 0.2s;
-      font-weight: 500;
-    }
-    button:active {
-      transform: scale(0.96);
-    }
-    .btn-number {
-      background: rgba(255, 255, 255, 0.15);
-      color: #f0f6fc;
-    }
-    .btn-number:hover {
-      background: rgba(255, 255, 255, 0.25);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    .btn-operator {
-      background: rgba(99, 102, 241, 0.5);
-      color: #e0e7ff;
-    }
-    .btn-operator:hover {
-      background: rgba(99, 102, 241, 0.7);
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-    }
-    .btn-equals {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-    }
-    .btn-equals:hover {
-      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-    }
-    .btn-clear {
-      background: rgba(239, 68, 68, 0.5);
-      color: #fecaca;
-    }
-    .btn-clear:hover {
-      background: rgba(239, 68, 68, 0.7);
-      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-    }
-    .span-2 {
-      grid-column: span 2;
-    }
-  </style>
+  <title>Kelime Avı - Yönetici</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="calculator">
-    <div class="display">
-      <div class="display-expression" id="expression"></div>
-      <div class="display-value" id="display">0</div>
+  <div class="container">
+    <header style="margin-bottom: 1.5rem;">
+      <a href="index.html" class="btn btn-ghost" style="margin-bottom: 0.5rem;">← Ana sayfa</a>
+      <h1 style="font-size: 1.5rem;">Yönetici Paneli</h1>
+    </header>
+
+    <div id="firebase-warning" class="card" style="display: none; border-color: var(--warning);">
+      <p>Firebase yapılandırması eksik. <code>js/firebase-config.js</code> dosyasındaki değerleri kendi projenizden doldurun.</p>
     </div>
-    <div class="buttons">
-      <button class="btn-clear" onclick="clearAll()">C</button>
-      <button class="btn-operator" onclick="appendOp('%')">%</button>
-      <button class="btn-operator" onclick="appendOp('/')">÷</button>
-      <button class="btn-operator" onclick="appendOp('*')">×</button>
-      <button class="btn-number" onclick="appendNum('7')">7</button>
-      <button class="btn-number" onclick="appendNum('8')">8</button>
-      <button class="btn-number" onclick="appendNum('9')">9</button>
-      <button class="btn-operator" onclick="appendOp('-')">−</button>
-      <button class="btn-number" onclick="appendNum('4')">4</button>
-      <button class="btn-number" onclick="appendNum('5')">5</button>
-      <button class="btn-number" onclick="appendNum('6')">6</button>
-      <button class="btn-operator" onclick="appendOp('+')">+</button>
-      <button class="btn-number" onclick="appendNum('1')">1</button>
-      <button class="btn-number" onclick="appendNum('2')">2</button>
-      <button class="btn-number" onclick="appendNum('3')">3</button>
-      <button class="btn-equals" onclick="calculate()">=</button>
-      <button class="btn-number span-2" onclick="appendNum('0')">0</button>
-      <button class="btn-number" onclick="appendNum('.')">.</button>
-      <button class="btn-equals" onclick="calculate()">=</button>
+
+    <!-- Katılımcılar -->
+    <div class="card">
+      <h2>Katılımcılar</h2>
+      <ul id="participant-list" class="list"></ul>
+      <p id="participant-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz katılımcı yok.</p>
+    </div>
+
+    <!-- Kelime havuzu -->
+    <div class="card">
+      <h2>Kelime Havuzu</h2>
+      <div class="form-row">
+        <input type="text" id="new-word" placeholder="Yeni kelime ekle" maxlength="20">
+        <button type="button" class="btn btn-primary" id="add-word-btn">Ekle</button>
+      </div>
+      <ul id="word-list" class="list"></ul>
+      <p id="word-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz kelime yok. Oyunu başlatmak için en az bir kelime ekleyin.</p>
+    </div>
+
+    <!-- Oyun kontrolü -->
+    <div class="card">
+      <h2>Oyun</h2>
+      <p id="game-status" class="text-muted" style="margin-bottom: 0.75rem;">Durum: Beklemede</p>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-success" id="start-game-btn">Oyunu Başlat</button>
+        <button type="button" class="btn btn-ghost" id="reset-game-btn">Oyunu Sıfırla</button>
+      </div>
     </div>
   </div>
 
-  <script>
-    let currentValue = '0';
-    let expression = '';
-    let lastResult = null;
-
-    const displayEl = document.getElementById('display');
-    const expressionEl = document.getElementById('expression');
-
-    function updateDisplay() {
-      displayEl.textContent = currentValue;
-      expressionEl.textContent = expression;
-    }
-
-    function appendNum(digit) {
-      if (lastResult !== null) {
-        expression = '';
-        lastResult = null;
-      }
-      if (digit === '.' && currentValue.includes('.')) return;
-      if (digit === '0' && currentValue === '0' && !currentValue.includes('.')) return;
-      if (digit !== '.' && currentValue === '0' && !currentValue.includes('.')) {
-        currentValue = digit;
-      } else {
-        currentValue += digit;
-      }
-      updateDisplay();
-    }
-
-    function appendOp(op) {
-      const num = parseFloat(currentValue);
-      if (expression === '') {
-        expression = currentValue + ' ' + op;
-      } else {
-        const parts = expression.trim().split(/\s+/);
-        if (parts.length >= 2) {
-          const prevOp = parts[parts.length - 1];
-          expression = parts.slice(0, -1).join(' ') + ' ' + prevOp + ' ' + num + ' ' + op;
-        } else {
-          expression = currentValue + ' ' + op;
-        }
-      }
-      currentValue = '0';
-      lastResult = null;
-      updateDisplay();
-    }
-
-    function calculate() {
-      if (expression === '') return;
-      const fullExpr = (expression.trim() + ' ' + currentValue).trim();
-      const parts = fullExpr.split(/\s+/);
-      let result = parseFloat(parts[0]);
-      for (let i = 1; i < parts.length; i += 2) {
-        const op = parts[i];
-        const next = parseFloat(parts[i + 1]);
-        if (isNaN(next)) break;
-        switch (op) {
-          case '+': result += next; break;
-          case '-': result -= next; break;
-          case '*': result *= next; break;
-          case '/': result = next === 0 ? NaN : result / next; break;
-          case '%': result = next === 0 ? NaN : result % next; break;
-        }
-      }
-      if (isNaN(result)) {
-        currentValue = 'Hata';
-      } else {
-        currentValue = Number.isInteger(result) ? String(result) : result.toFixed(8).replace(/\.?0+$/, '');
-      }
-      expression = fullExpr + ' =';
-      lastResult = result;
-      updateDisplay();
-    }
-
-    function clearAll() {
-      currentValue = '0';
-      expression = '';
-      lastResult = null;
-      updateDisplay();
-    }
-
-    updateDisplay();
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/game-logic.js"></script>
+  <script src="js/admin.js"></script>
 </body>
 </html>
