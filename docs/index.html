@@ -1,132 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-<title>Oyun</title>
-<style>
-body{background:#111;color:white;text-align:center;font-family:Arial}
-#timer{font-size:40px;color:red}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kelime Avı - Yönetici</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <div class="container">
+    <header style="margin-bottom: 1.5rem;">
+      <a href="index.html" class="btn btn-ghost" style="margin-bottom: 0.5rem;">← Ana sayfa</a>
+      <h1 style="font-size: 1.5rem;">Yönetici Paneli</h1>
+    </header>
 
-<div id="login">
-<input id="name" placeholder="Ad">
-<button onclick="join()">Gir</button>
-</div>
+    <div id="firebase-warning" class="card" style="display: none; border-color: var(--warning);">
+      <p>Firebase yapılandırması eksik. <code>js/firebase-config.js</code> dosyasındaki değerleri kendi projenizden doldurun.</p>
+    </div>
 
-<div id="waiting" style="display:none">Onay bekleniyor...</div>
+    <!-- Katılımcılar -->
+    <div class="card">
+      <h2>Katılımcılar</h2>
+      <ul id="participant-list" class="list"></ul>
+      <p id="participant-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz katılımcı yok.</p>
+    </div>
 
-<div id="game" style="display:none">
-<h2 id="word"></h2>
-<div id="timer">30</div>
-</div>
+    <!-- Kelime havuzu -->
+    <div class="card">
+      <h2>Kelime Havuzu</h2>
+      <div class="form-row">
+        <input type="text" id="new-word" placeholder="Yeni kelime ekle" maxlength="20">
+        <button type="button" class="btn btn-primary" id="add-word-btn">Ekle</button>
+      </div>
+      <ul id="word-list" class="list"></ul>
+      <p id="word-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz kelime yok. Oyunu başlatmak için en az bir kelime ekleyin.</p>
+    </div>
 
-<div id="champion" style="display:none">
-<h1>🏆 ŞAMPİYON 🏆</h1>
-<h2 id="champName"></h2>
-</div>
+    <!-- Oyun kontrolü -->
+    <div class="card">
+      <h2>Oyun</h2>
+      <p id="game-status" class="text-muted" style="margin-bottom: 0.75rem;">Durum: Beklemede</p>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-success" id="start-game-btn">Oyunu Başlat</button>
+        <button type="button" class="btn btn-ghost" id="reset-game-btn">Oyunu Sıfırla</button>
+      </div>
+    </div>
+  </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<script>
-const firebaseConfig={
-apiKey:"AIzaSyBwzlkq9LZYCM_sk_M6tKfx5jme37Zw0u4",
-authDomain:"kelime-avi-bec9f.firebaseapp.com",
-databaseURL:"https://kelime-avi-bec9f-default-rtdb.firebaseio.com"
-};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
-
-let myName=localStorage.getItem("playerName")||"";
-let gameStarted=false;
-let interval;
-let time=30;
-
-/* AUTO LOGIN */
-if(myName){
-  login.style.display="none";
-  waiting.style.display="block";
-}
-
-/* JOIN */
-function join(){
-  if(!name.value.trim()) return alert("İsim giriniz");
-  myName=name.value.trim();
-  localStorage.setItem("playerName",myName);
-  db.ref("waiting").push({name:myName});
-  login.style.display="none";
-  waiting.style.display="block";
-}
-
-/* ONAY */
-db.ref("players").on("value",snap=>{
-  let approved=false;
-  snap.forEach(c=>{
-    if(c.val().name==myName) approved=true;
-  });
-  if(approved){
-    waiting.innerHTML="Onaylandı. Başlatma bekleniyor...";
-  }
-});
-
-/* STATUS */
-db.ref("tournament/status").on("value",snap=>{
-  if(snap.val()=="started" && !gameStarted){
-    gameStarted=true;
-    waiting.style.display="none";
-    game.style.display="block";
-    newWord();
-    startTimer();
-  }
-});
-
-/* WORD */
-function newWord(){
-  db.ref("words").once("value",snap=>{
-    let arr=[];
-    snap.forEach(c=>arr.push(c.val()));
-    if(arr.length>0)
-      word.innerText=arr[Math.floor(Math.random()*arr.length)];
-    else
-      word.innerText="Kelime yok";
-  });
-}
-
-/* TIMER */
-function startTimer(){
-  clearInterval(interval);
-  interval=setInterval(()=>{
-    time--;
-    timer.innerText=time;
-    if(time<=0){
-      time=30;
-      newWord();
-    }
-  },1000);
-}
-
-/* CHAMPION */
-db.ref("tournament/champion").on("value",snap=>{
-  if(snap.val()){
-    game.style.display="none";
-    champion.style.display="block";
-    champName.innerText=snap.val();
-  }
-});
-
-/* KICK CONTROL */
-db.ref("players").on("value",snap=>{
-  let exists=false;
-  snap.forEach(c=>{
-    if(c.val().name==myName) exists=true;
-  });
-  if(!exists && myName){
-    alert("Oyundan çıkarıldınız");
-    localStorage.removeItem("playerName");
-    location.reload();
-  }
-});
-</script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/game-logic.js"></script>
+  <script src="js/admin.js"></script>
 </body>
 </html>
