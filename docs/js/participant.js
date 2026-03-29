@@ -126,12 +126,14 @@
   }
 
   function startGame() {
+    console.log("startGame çağrıldı - currentDefinition:", currentDefinition);
     revealedLetters = [];
     guessInput.value = "";
     resultMessage.style.display = "none";
     guessInput.disabled = false;
     guessBtn.disabled = false;
-    definitionDisplay.textContent = currentDefinition;
+    definitionDisplay.textContent = currentDefinition || "Tanım bulunamadı";
+    console.log("definitionDisplay.textContent ayarlandı:", definitionDisplay.textContent);
     updateHiddenWordDisplay();
     
     // Timer'ı başlat

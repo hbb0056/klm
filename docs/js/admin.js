@@ -160,6 +160,7 @@
       }
       // Rastgele bir kelime seç
       let selectedWord = wordsArray[Math.floor(Math.random() * wordsArray.length)];
+      console.log("Seçilen kelime:", selectedWord);
       
       // String ise object'e çevir
       if (typeof selectedWord === 'string') {
@@ -171,7 +172,7 @@
         };
       }
       
-      gameStateRef.set({
+      const gameData = {
         status: "playing",
         word: selectedWord.word || "",
         definition: selectedWord.definition || "",
@@ -179,7 +180,9 @@
         revealInterval: selectedWord.revealInterval || 10,
         startedAt: Date.now(),
         revealedCount: 0
-      });
+      };
+      console.log("Firebase'e yazılacak veri:", gameData);
+      gameStateRef.set(gameData);
     });
   });
 
