@@ -1,6 +1,4 @@
 (function () {
-  console.log("participant.js yüklendi");
-  
   if (typeof firebase === "undefined" || !firebase.apps?.length) {
     document.getElementById("firebase-warning").style.display = "block";
     document.getElementById("join-screen").style.display = "block";
