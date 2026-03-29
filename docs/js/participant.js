@@ -1,4 +1,6 @@
 (function () {
+  console.log("participant.js yüklendi");
+  
   if (typeof firebase === "undefined" || !firebase.apps?.length) {
     document.getElementById("firebase-warning").style.display = "block";
     document.getElementById("join-screen").style.display = "block";
@@ -17,14 +19,22 @@
   const gameScreen = document.getElementById("game-screen");
   const playerNameInput = document.getElementById("player-name");
   const joinBtn = document.getElementById("join-btn");
-  const wordGridContainer = document.getElementById("word-grid-container");
-  const foundWordsEl = document.getElementById("found-words");
+  const definitionDisplay = document.getElementById("definition-display");
+  const hiddenWordDisplay = document.getElementById("hidden-word-display");
+  const timerDisplay = document.getElementById("timer-display");
+  const guessInput = document.getElementById("guess-input");
+  const guessBtn = document.getElementById("guess-btn");
+  const resultMessage = document.getElementById("result-message");
 
   let myParticipantId = null;
-  let currentGrid = null;
-  let currentWordPositions = null;
-  let selectedCells = [];
-  let foundWords = [];
+  let currentWord = null;
+  let currentDefinition = null;
+  let gameDuration = 0;
+  let revealInterval = 0;
+  let gameStartTime = null;
+  let timerInterval = null;
+  let revealInterval_id = null;
+  let revealedLetters = [];
 
   joinScreen.style.display = "block";
 
@@ -102,90 +112,134 @@
   function listenGameState() {
     gameStateRef.on("value", function (snap) {
       const state = snap.val() || {};
-      if (state.status === "playing" && state.grid) {
-        currentGrid = state.grid;
-        currentWordPositions = state.wordPositions || {};
-        renderGrid();
+      if (state.status === "playing" && state.word) {
+        currentWord = state.word;
+        currentDefinition = state.definition;
+        gameDuration = state.duration || 60;
+        revealInterval = state.revealInterval || 10;
+        gameStartTime = state.startedAt;
+        startGame();
         showScreen("game");
       } else {
-        currentGrid = null;
-        currentWordPositions = null;
+        stopGame();
         showScreen("wait-game");
       }
     });
   }
 
-  function renderGrid() {
-    if (!currentGrid || !currentWordPositions) return;
-    foundWords = [];
-    selectedCells = [];
-    wordGridContainer.innerHTML = "";
-    const gridEl = document.createElement("div");
-    gridEl.className = "word-grid";
-    const rows = currentGrid.length;
-    const cols = currentGrid[0].length;
-    gridEl.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+  function startGame() {
+    revealedLetters = [];
+    guessInput.value = "";
+    resultMessage.style.display = "none";
+    guessInput.disabled = false;
+    guessBtn.disabled = false;
+    definitionDisplay.textContent = currentDefinition;
+    updateHiddenWordDisplay();
+    
+    // Timer'ı başlat
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer, 100);
+    
+    // Harfleri açma intervalini başlat
+    if (revealInterval_id) clearInterval(revealInterval_id);
+    revealInterval_id = setInterval(revealNextLetter, revealInterval * 1000);
+  }
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = document.createElement("cell");
-        cell.textContent = currentGrid[r][c];
-        cell.dataset.r = r;
-        cell.dataset.c = c;
-        cell.addEventListener("click", function () {
-          toggleCell(r, c);
-        });
-        gridEl.appendChild(cell);
+  function updateTimer() {
+    const elapsed = (Date.now() - gameStartTime) / 1000;
+    const remaining = Math.max(0, gameDuration - elapsed);
+    timerDisplay.textContent = Math.ceil(remaining) + "s";
+    
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      stopGame();
+      resultMessage.textContent = "⏰ Süre bitti! Doğru kelime: " + currentWord;
+      resultMessage.style.background = "#ffb6b6";
+      resultMessage.style.color = "#d00";
+      resultMessage.style.display = "block";
+      guessInput.disabled = true;
+      guessBtn.disabled = true;
+    }
+  }
+
+  function revealNextLetter() {
+    if (!currentWord || currentWord.length === 0) {
+      if (revealInterval_id) clearInterval(revealInterval_id);
+      return;
+    }
+    
+    // Tüm harfler açıldı mı kontrol et
+    let closedCount = 0;
+    for (let i = 0; i < currentWord.length; i++) {
+      if (!revealedLetters[i]) closedCount++;
+    }
+    
+    if (closedCount === 0) {
+      if (revealInterval_id) clearInterval(revealInterval_id);
+      return;
+    }
+    
+    // Rastgele bir harfi aç (eğer zaten açılmamışsa)
+    const unrevealed = [];
+    for (let i = 0; i < currentWord.length; i++) {
+      if (!revealedLetters[i]) {
+        unrevealed.push(i);
       }
     }
-    wordGridContainer.appendChild(gridEl);
-    updateFoundWordsDisplay();
+    
+    if (unrevealed.length > 0) {
+      const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+      revealedLetters[randomIdx] = true;
+      updateHiddenWordDisplay();
+    }
   }
 
-  function toggleCell(r, c) {
-    const idx = selectedCells.findIndex(function (x) {
-      return x.r === r && x.c === c;
-    });
-    if (idx >= 0) {
-      selectedCells.splice(idx, 1);
+  function updateHiddenWordDisplay() {
+    let display = "";
+    for (let i = 0; i < currentWord.length; i++) {
+      if (revealedLetters[i]) {
+        display += currentWord[i].toUpperCase();
+      } else {
+        display += "_";
+      }
+      if (i < currentWord.length - 1) display += " ";
+    }
+    hiddenWordDisplay.textContent = display;
+  }
+
+  function stopGame() {
+    if (timerInterval) clearInterval(timerInterval);
+    if (revealInterval_id) clearInterval(revealInterval_id);
+  }
+
+  guessBtn.addEventListener("click", function () {
+    const guess = (guessInput.value || "").trim().toUpperCase();
+    const answer = (currentWord || "").toUpperCase();
+    
+    if (!guess) return;
+    
+    guessInput.value = "";
+    
+    if (guess === answer) {
+      resultMessage.textContent = "✅ Doğru! Kelime: " + currentWord;
+      resultMessage.style.background = "#b6ffb6";
+      resultMessage.style.color = "#0a0";
+      resultMessage.style.display = "block";
+      guessInput.disabled = true;
+      guessBtn.disabled = true;
+      stopGame();
     } else {
-      selectedCells.push({ r, c });
+      resultMessage.textContent = "❌ Yanlış! Tekrar deneyiniz.";
+      resultMessage.style.background = "#ffddaa";
+      resultMessage.style.color = "#a60";
+      resultMessage.style.display = "block";
+      setTimeout(() => {
+        resultMessage.style.display = "none";
+      }, 2000);
     }
-    updateSelectionUI();
-    const word = getWordFromSelection(currentWordPositions, selectedCells);
-    if (word && foundWords.indexOf(word) < 0) {
-      foundWords.push(word);
-      updateFoundWordsDisplay();
-      selectedCells = [];
-      updateSelectionUI();
-    }
-  }
+  });
 
-  function updateSelectionUI() {
-    const cells = wordGridContainer.querySelectorAll("cell");
-    cells.forEach(function (cell) {
-      const r = parseInt(cell.dataset.r, 10);
-      const c = parseInt(cell.dataset.c, 10);
-      const isSelected = selectedCells.some(function (x) {
-        return x.r === r && x.c === c;
-      });
-      const isFound = foundWords.some(function (w) {
-        const pos = currentWordPositions[w];
-        return pos && pos.some(function (p) {
-          return p.r === r && p.c === c;
-        });
-      });
-      cell.classList.toggle("selected", isSelected);
-      cell.classList.toggle("found", isFound);
-    });
-  }
-
-  function updateFoundWordsDisplay() {
-    foundWordsEl.innerHTML = "";
-    foundWords.forEach(function (w) {
-      const span = document.createElement("span");
-      span.textContent = w;
-      foundWordsEl.appendChild(span);
-    });
-  }
+  guessInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") guessBtn.click();
+  });
 })();

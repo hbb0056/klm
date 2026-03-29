@@ -15,6 +15,9 @@
   const wordListEl = document.getElementById("word-list");
   const wordEmptyEl = document.getElementById("word-empty");
   const newWordInput = document.getElementById("new-word");
+  const newDefinitionInput = document.getElementById("new-definition");
+  const gameDurationInput = document.getElementById("game-duration");
+  const revealIntervalInput = document.getElementById("reveal-interval");
   const addWordBtn = document.getElementById("add-word-btn");
   const startGameBtn = document.getElementById("start-game-btn");
   const resetGameBtn = document.getElementById("reset-game-btn");
@@ -78,9 +81,24 @@
     const entries = Object.entries(data);
     wordListEl.innerHTML = "";
     wordEmptyEl.style.display = entries.length ? "none" : "block";
-    entries.forEach(function ([id, word]) {
+    entries.forEach(function ([id, item]) {
       const li = document.createElement("li");
-      li.innerHTML = '<span class="name">' + escapeHtml(word) + '</span>';
+      let wordText = '';
+      let defText = '';
+      
+      if (typeof item === 'string') {
+        wordText = item;
+      } else if (typeof item === 'object' && item !== null) {
+        wordText = item.word || '';
+        defText = item.definition || '';
+      }
+      
+      let displayText = '<strong>' + escapeHtml(wordText) + '</strong>';
+      if (defText) {
+        displayText += ' - ' + escapeHtml(defText);
+      }
+      li.innerHTML = '<span class="name">' + displayText + '</span>';
+      
       const delBtn = document.createElement("button");
       delBtn.className = "btn btn-danger";
       delBtn.textContent = "Sil";
@@ -105,29 +123,62 @@
 
   addWordBtn.addEventListener("click", function () {
     const word = (newWordInput.value || "").trim();
-    if (!word) return;
+    const definition = (newDefinitionInput.value || "").trim();
+    const duration = parseInt(gameDurationInput.value) || 60;
+    const interval = parseInt(revealIntervalInput.value) || 10;
+    
+    if (!word || !definition) {
+      alert("Lütfen kelime ve tanım girin.");
+      return;
+    }
+    
     newWordInput.value = "";
-    wordsRef.push(word);
+    newDefinitionInput.value = "";
+    wordsRef.push({
+      word: word,
+      definition: definition,
+      duration: duration,
+      revealInterval: interval
+    });
   });
 
   newWordInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") newDefinitionInput.focus();
+  });
+  
+  newDefinitionInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") addWordBtn.click();
   });
 
   startGameBtn.addEventListener("click", function () {
     wordsRef.once("value", function (snap) {
       const wordsObj = snap.val() || {};
-      const words = Object.values(wordsObj);
-      if (words.length === 0) {
+      const wordsArray = Object.values(wordsObj);
+      if (wordsArray.length === 0) {
         alert("En az bir kelime ekleyin.");
         return;
       }
-      const { grid, wordPositions } = generateWordSearchGrid(words);
+      // Rastgele bir kelime seç
+      let selectedWord = wordsArray[Math.floor(Math.random() * wordsArray.length)];
+      
+      // String ise object'e çevir
+      if (typeof selectedWord === 'string') {
+        selectedWord = {
+          word: selectedWord,
+          definition: selectedWord,
+          duration: 60,
+          revealInterval: 10
+        };
+      }
+      
       gameStateRef.set({
         status: "playing",
-        grid: grid,
-        wordPositions: wordPositions,
-        startedAt: Date.now()
+        word: selectedWord.word || "",
+        definition: selectedWord.definition || "",
+        duration: selectedWord.duration || 60,
+        revealInterval: selectedWord.revealInterval || 10,
+        startedAt: Date.now(),
+        revealedCount: 0
       });
     });
   });

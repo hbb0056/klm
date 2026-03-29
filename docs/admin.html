@@ -24,15 +24,18 @@
       <p id="participant-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz katılımcı yok.</p>
     </div>
 
-    <!-- Kelime havuzu -->
+    <!-- Kelime ve Tanımı -->
     <div class="card">
-      <h2>Kelime Havuzu</h2>
+      <h2>Kelime ve Tanım</h2>
       <div class="form-row">
-        <input type="text" id="new-word" placeholder="Yeni kelime ekle" maxlength="20">
+        <input type="text" id="new-word" class="input-normal" placeholder="Kelime" maxlength="30">
+        <input type="text" id="new-definition" class="input-large" placeholder="Tanım" maxlength="100">
+        <input type="number" id="game-duration" class="input-small" placeholder="Süre (sn)" min="10" max="300" value="60">
+        <input type="number" id="reveal-interval" class="input-small" placeholder="Aralık (sn)" min="5" max="60" value="10">
         <button type="button" class="btn btn-primary" id="add-word-btn">Ekle</button>
       </div>
       <ul id="word-list" class="list"></ul>
-      <p id="word-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz kelime yok. Oyunu başlatmak için en az bir kelime ekleyin.</p>
+      <p id="word-empty" class="text-muted" style="display: none; padding: 0.5rem 0;">Henüz kelime yok.</p>
     </div>
 
     <!-- Oyun kontrolü -->

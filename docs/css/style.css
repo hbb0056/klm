@@ -152,7 +152,8 @@ a:hover {
 
 /* Form */
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+input[type="number"] {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1rem;
@@ -173,10 +174,28 @@ input:focus {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .form-row input {
   flex: 1;
+  min-width: 120px;
+}
+
+.form-row .input-small {
+  flex: 0 0 100px;
+}
+
+.form-row .input-normal {
+  flex: 0 1 150px;
+}
+
+.form-row .input-large {
+  flex: 1 1 250px;
+}
+
+.form-row button {
+  flex-shrink: 0;
 }
 
 /* Listeler */
@@ -299,6 +318,25 @@ ul.list li .badge {
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid var(--danger);
   color: #fca5a5;
+}
+
+/* Tahmin oyunu stiller */
+#result-message {
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Küçük ekran */
